@@ -1,5 +1,5 @@
 #!/bin/sh
-#$ -N full_model
+#$ -N minus_demogph
 #$ -q LowMemLongterm.q
 #$ -t 1-500
 #$ -pe smp 10
@@ -11,8 +11,8 @@ echo $SGE_TASK_ID
 
 data="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/IMPUTATION_SETS/dataset_${SGE_TASK_ID}.csv"
 feature_list="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/all_features.csv"
-features_to_remove="EMPTY" #if nothing to remove then just add EMPTY (or any word) without brackets eg.features_to_remove="EMPTY" 
-output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/test"
+features_to_remove="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/remove_demograhic.csv" #if nothing to remove then just add EMPTY (or any word) without brackets eg.features_to_remove="EMPTY" 
+output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/demographic"
 
 
 
