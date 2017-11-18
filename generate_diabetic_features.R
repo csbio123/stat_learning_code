@@ -67,7 +67,7 @@ prepare_feature_sets<-function(data_list, outptut_dir, prefix="dataset") {
     features = cbind(imp_d, personal_cofounders, technical_cofounders, gene_expression)
     print(dim(features))
     outptut_file = paste0(outptut_file_pre, "_", x, ".csv")
-    write.table(features, file=outptut_file)
+    write.csv(features, file=outptut_file)
   })
   
 }

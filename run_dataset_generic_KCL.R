@@ -13,8 +13,6 @@ register_parallel<-function(){
   #register the workers
   cores=detectCores()
 
-  print("Number of cores:")
-  print(cores)
   cl <- makeCluster(cores-1)
   registerDoParallel(cl)
   clusterEvalQ(cl, .libPaths("/users/spjtcoi/brc_scratch/Rlibs"))#Register libraries onto each core
@@ -230,10 +228,13 @@ generate_predictions <- function(data, feature_list, features_to_remove, output_
     data = data[, -which(colnames(data) %in% remove)]
   }
   
-  target_column = feature_list[feature_list[, 2] == "target",][["feature_name"]]
-  target = data[, target_column]
+  f = feature_list[feature_list[, 2] == "target",]
+  target_column =  as.character(f$feature_name)
+  print(paste0('This is my target_column: ',target_column))
+  target = as.matrix(data[, which(colnames(data) %in% target_column)])
   features = as.matrix(data[, -which(colnames(data) %in% target_column)])
-  
+
+print("Running predictions")
   
   alphas <- seq(from = 0.5, to = 1, by = 0.05)
   results = run_glmnet(target,
@@ -250,9 +251,11 @@ generate_predictions <- function(data, feature_list, features_to_remove, output_
     apply(full_results[subset(full_results["parameter_combi"] == x), ], 2, mean)
   }, simplify = FALSE)))
 
+
   #Feature importance calculations
   original_fi = feature_importance_stats(results)#extraction of transcript-level counts
-  #We want to increase permutations to probably a 1000
+print("Running permutated predictions")
+#We want to increase permutations to probably a 1000
   p_result = run_glmnet(target,features,alphas,
                                          iterations = 100, random = TRUE)
   permutation_fi = feature_importance_stats(p_result) #extaction of transcript-level
@@ -279,7 +282,7 @@ print(paste0('Feature reference: ', args[2] ))
 print(paste0('Features to remove: ', args[3] ))
 print(paste0('Output dir: ', args[4] ))
 
-data = read.csv(args[1], stringsAsFactors = FALSE)
+data = read.csv(args[1], stringsAsFactors = FALSE, sep=' ' )
 
 #This is the fike which contains all features and its corresponding class
 #Column 1: Feature name
