@@ -282,8 +282,8 @@ print(paste0('Feature reference: ', args[2] ))
 print(paste0('Features to remove: ', args[3] ))
 print(paste0('Output dir: ', args[4] ))
 
-data = read.csv(args[1], stringsAsFactors = FALSE, sep=' ' )# for space separated file 
-#data = read.csv(args[1], stringsAsFactors = FALSE)#if comma delimited the remove
+#data = read.csv(args[1], stringsAsFactors = FALSE, sep=' ' )# for space separated file 
+data = read.csv(args[1], stringsAsFactors = FALSE)#if comma delimited the remove
 
 #This is the fike which contains all features and its corresponding class
 #Column 1: Feature name
