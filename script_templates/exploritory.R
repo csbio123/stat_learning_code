@@ -1,4 +1,3 @@
-#Read data from server
 read_data <-function(my_dir, input_filename){ 
   setwd(my_dir)
   imputation_data_generated = load(input_filename)
@@ -13,18 +12,16 @@ read_data <-function(my_dir, input_filename){
   return(data)
 }
 
+fun_bmi<-function(imputed_single, XL) {
+  combination<-cbind(imputed_single, XL)
+  bmi.enet.Y<<-combination[,'BMI.norm']  # << double assignment creates resulting object in the global envirnmental. Content of object will change with each 'm' in CV loop
+  remaining = combination[,-4] #4:BMI.norm, 5:hba1c.norm, 6:BMI.obese, 7:hba1c.diabetes
+  
+  print("Removing following features from the dataset:")
 
-#input vars
-#Inplicit way to pass parameters over positions
-#data_list=prep_data(imp.list.Tall, GX.sva, svmod.bmi.catg.sv, svmod.hba1c.catg.sv, pheno.mini, )#this works because order in function definition is maintained ie.covars, sva_file, bmi_sv_file, hba_sv_file
-#NOT OK TO DO THIS: THE FUNCTION WILL ASSUME THAT covars IS GX.sva, because it looks at the position
-#data_list=prep_data( GX.sva, imp.list.Tall, svmod.bmi.catg.sv, svmod.hba1c.catg.sv, pheno.mini, )#this works because order in function definition is maintained ie.covars, sva_file, bmi_sv_file, hba_sv_file
-
-#Explicit way to pass parameters
-#data_list=prep_data(covars=imp.list.Tall, sva_file=GX.sva, bmi_sv_file=svmod.bmi.catg.sv, hba_sv_file=svmod.hba1c.catg.sv, pheno=pheno.mini, tpheno=)#this works because order in function definition is maintained ie.covars, sva_file, bmi_sv_file, hba_sv_file\
-#This is the same as the line before, as we explictily assign the variables to the parameters so we 
-#are allowed to change the order 
-#data_list=prep_data( sva_file=GX.sva, covars=imp.list.Tall,hba_sv_file=svmod.hba1c.catg.sv, bmi_sv_file=svmod.bmi.catg.sv, tpheno=, pheno=pheno.mini)#this works because order in function definition is maintained ie.covars, sva_file, bmi_sv_file, hba_sv_file
+  print(paste0("After removal:", ncol(remaining)))
+  return(list(target=bmi.enet.Y, features=remaining))
+}
 
 prep_data<-function(covars, sva_file, bmi_sv_file, hba_sv_file, pheno, tpheno ){
   test.obj2<-lapply(covars,`[`, c("ChipID", "PC1", "PC2", "Age.norm", "BMI.norm", "GLUCOSE_GRS", "OBSESITY_GRS", "med.days"))#DELETE FOLLOWING VARS AS APPROPRIATE (ACCORDING TO TRAIT)
@@ -48,31 +45,22 @@ prep_data<-function(covars, sva_file, bmi_sv_file, hba_sv_file, pheno, tpheno ){
 }
 
 
-
-prepare_feature_sets<-function(data_list, outptut_dir, prefix="dataset") {
+set_folds_bmi<-function(bmi.enet, f, n){
+  set.seed(1)
+  theFolds<-sample(rep(seq(f), length.out=nrow(bmi.enet)))#Create f folds
+  fold.10000 <- t(replicate(10000, sample(theFolds))) #Create 10FoldCV a 10000 times
+  # print(sum(duplicated(fold.10000)))
+  #out<-fold.10000[!(duplicated(fold.10000)), ][1:10000] #impt if sum(duplicated(fold.10000)) >0
+  fold.10000<-unique(fold.10000);
+  folds<-fold.10000[sample(nrow(fold.10000), n), ] #100 iterations of 10 folds
+  AllImputedSets<-vector('list', 0)
+  #bmi.XL<-subset(bmi.enet, select=-c(hlth, ovwgt, obese, Age.norm, PC1, PC2, hba1c.catgprediabetes, hba1c.catgdiabetes, med.days, GLUCOSE_GRS, OBSESITY_GRS))#removal of variables to be filled by loop
+  bmi.XL<-subset(bmi.enet, select=-c(hlth, ovwgt, obese, Age.norm, PC1, PC2, med.days, GLUCOSE_GRS, OBSESITY_GRS)) #removal of variables to be filled by loop
   
-  gene_expression = subset(data_list$bmi_enet, select=-c(gender, ChipID_2B,  ChipID_2C,  ChipID_2D,  ChipID_2E,  ChipID_2F, ChipID_2G,  ChipID_2H,  ChipID_2I,  ChipID_2J,  ChipID_2K,  ChipID_2L,  Timepoint, 
-                                                         sv4, sv5, hlth, ovwgt, obese, Age.norm, PC1, PC2, med.days, GLUCOSE_GRS, OBSESITY_GRS))
-  
-  technical_cofounders = subset(data_list$bmi_enet, select=c(ChipID_2B,  ChipID_2C,  ChipID_2D,  ChipID_2E,  ChipID_2F, ChipID_2G,  ChipID_2H,  ChipID_2I,  ChipID_2J,  ChipID_2K,  ChipID_2L,  Timepoint, 
-                                                             sv4, sv5))
-  imputed_data = data_list$imputed_sets
-  personal_cofounders = subset(data_list$bmi_enet, select=c(gender))
-  dir.create(outptut_dir, showWarnings = TRUE, recursive = TRUE)
-  outptut_file_pre = paste0(outptut_dir, "/" , prefix)
-  print(length(imputed_data))
-  sapply(seq(1, length(imputed_data)), function(x) {
-    
-    imp_d = imputed_data[[x]]
-    features = cbind(imp_d, personal_cofounders, technical_cofounders, gene_expression)
-    print(dim(features))
-    outptut_file = paste0(outptut_file_pre, "_", x, ".csv")
-    write.csv(features, file=outptut_file)
-  })
-  
+  return(list(folds=folds, bmi_XL=bmi.XL))
 }
 
-input_data=read_data("/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct", "ALL_SV_drugnaive_hba_01-09-16.RData")
+input_data=read_data("/Users/ti1/Google\ Drive/raw\ data/", "imputation_data_generated.RData")
 
 data_list = prep_data(
   input_data$imp_list_Tall,
@@ -80,9 +68,38 @@ data_list = prep_data(
   input_data$svmod_bmi_catg_sv,
   input_data$svmod_hba1c_catg_sv,
   input_data$pheno_mini,
-  input_datatpheno
+  input_datat$pheno
 )#this works because order in function definition is maintained ie.covars, sva_file, bmi_sv_file, hba_sv_file
 #Set the folds for each BMI
+fold_and_data <- set_folds_bmi(data_list$bmi_enet, 10, 100)
 
-prepared_data = prepare_feature_sets(data_list, outptut_dir = "/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/IMPUTATION_SETS")
-names(prepared_data)
+
+full_data = fun_bmi(data_list$imputed_sets[[as.numeric(1)]], fold_and_data$bmi_XL)
+
+
+
+# apply PCA - scale. = TRUE is highly 
+# advisable, but default is FALSE. 
+features= full_data$feature[, seq(22, ncol(full_data$feature))]
+#features= full_data$feature
+
+
+ir.pca <- prcomp(t(fold_and_data$bmi_XL),
+                 center = TRUE,
+                 scale. = TRUE) 
+
+df=data.frame(x=ir.pca$x[,1], y=ir.pca$x[,2], target = full_data$target, type = full_data$feature[,1], chip=input_data$svmod_hba1c_catg_sv[,7])
+ggplot(df, aes(x,y, color=type)) + geom_point()
+
+
+ir.pca <- prcomp(features,
+                 center = TRUE,
+                 scale. = TRUE) 
+
+df=data.frame(x=ir.pca$x[,1], y=ir.pca$x[,2])
+ggplot(df, aes(x,y)) + geom_point()
+
+head(sort(ir.pca$x), 100)
+head(sort(ir.pca$x, decreasing = TRUE), 100)
+
+

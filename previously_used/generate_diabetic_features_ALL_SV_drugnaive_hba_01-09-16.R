@@ -27,7 +27,7 @@ read_data <-function(my_dir, input_filename){
 #data_list=prep_data( sva_file=GX.sva, covars=imp.list.Tall,hba_sv_file=svmod.hba1c.catg.sv, bmi_sv_file=svmod.bmi.catg.sv, tpheno=, pheno=pheno.mini)#this works because order in function definition is maintained ie.covars, sva_file, bmi_sv_file, hba_sv_file
 
 prep_data<-function(covars, sva_file, bmi_sv_file, hba_sv_file, pheno, tpheno ){
-  test.obj2<-lapply(covars,`[`, c("ChipID", "PC1", "PC2", "Age.norm", "BMI.norm", "GLUCOSE_GRS", "OBSESITY_GRS", "med.days"))#DELETE FOLLOWING VARS AS APPROPRIATE (ACCORDING TO TRAIT)
+  test.obj2<-lapply(covars,`[`, c("ChipID", "PC1", "PC2", "Age.norm", "BMI.norm", "med.days"))#DELETE FOLLOWING VARS AS APPROPRIATE (ACCORDING TO TRAIT)
   #2=CHipID,9=PC1,10=PC2,15=Age.norm,16=BMI.norm,20=hba.norm,43=BMI.obese,52=hba.dbx, 24=GLUCOSE_GRS, 25=OBSESITY_GRS, 14=med.days  #output_check<-test.obj2[[1]]
   myvec <- sapply(test.obj2, NROW)#check rownums make sense and of equal length. have dup sample ids been removed?
   tpheno<-t(pheno)#create list of ChipIDs with same sequence as 'pheno'. To be used for post-mice filtering
@@ -52,12 +52,12 @@ prep_data<-function(covars, sva_file, bmi_sv_file, hba_sv_file, pheno, tpheno ){
 prepare_feature_sets<-function(data_list, outptut_dir, prefix="dataset") {
   
   gene_expression = subset(data_list$bmi_enet, select=-c(gender, ChipID_2B,  ChipID_2C,  ChipID_2D,  ChipID_2E,  ChipID_2F, ChipID_2G,  ChipID_2H,  ChipID_2I,  ChipID_2J,  ChipID_2K,  ChipID_2L,  Timepoint, 
-                                                         sv4, sv5, hlth, ovwgt, obese, Age.norm, PC1, PC2, med.days, GLUCOSE_GRS, OBSESITY_GRS))
+                                                         sv1, sv2, sv3, sv4, sv5, sv6, sv7, sv8, sv9, sv10, sv11, hlth, ovwgt, obese, Age.norm, PC1, PC2, med.days))
   
   technical_cofounders = subset(data_list$bmi_enet, select=c(ChipID_2B,  ChipID_2C,  ChipID_2D,  ChipID_2E,  ChipID_2F, ChipID_2G,  ChipID_2H,  ChipID_2I,  ChipID_2J,  ChipID_2K,  ChipID_2L,  Timepoint, 
                                                              sv4, sv5))
   imputed_data = data_list$imputed_sets
-  personal_cofounders = subset(data_list$bmi_enet, select=c(gender))
+  personal_cofounders = subset(data_list$bmi_enet, select=c(sv4, sv5, sv6))#sv4-6 capture gender
   dir.create(outptut_dir, showWarnings = TRUE, recursive = TRUE)
   outptut_file_pre = paste0(outptut_dir, "/" , prefix)
   print(length(imputed_data))

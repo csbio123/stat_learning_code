@@ -94,8 +94,8 @@ pval_anal <- function(path) {
 args <-commandArgs(trailingOnly = TRUE)#trailing only stops the argument function from requiring specification of too much information eg R version, etc
 print(paste0('Input directory for p value analysis:', args[1]))#This line will tell you the input directory
 
-args[1] = "C:/Users/spjtcoi/Google Drive/new_results/"
-args[1] = "/Users/ti1/Google Drive/new_results/"
+args[1] = "C:/Users/spjtcoi/Google Drive/single_factor_analyses/"
+#args[1] = "/Users/ti1/Google Drive/new_results/"
 if (length(args) == 1) {
   pval_anal(args[1])#if a single argument is entered then that paramater should be the directory path
 } 
