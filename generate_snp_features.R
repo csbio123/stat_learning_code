@@ -38,7 +38,16 @@ snps = columns[!columns %in% c(target, features, cluster_identification, delete)
 
 
 target_data = dat_4[, c(target)]
+names(target_data)=target
 features_data = dat_4[, c(features)]
 snps_data = dat_4[, c(snps)]
 
-complete_data = list(target=target_data, individual_factors=features_data, snps=snps_data)
+features = cbind(target_data, features_data, snps_data)
+cols = colnames(features)
+cols[1]=target
+colnames(features) = cols 
+
+print(dim(features))
+outptut_file_pre="/Users/ti1/Documents/my_output"
+outptut_file = paste0(outptut_file_pre, ".csv")
+write.csv(features, file=outptut_file, row.names = FALSE)
