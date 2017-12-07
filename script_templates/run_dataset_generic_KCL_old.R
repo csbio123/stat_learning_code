@@ -1,6 +1,6 @@
 #source("http://bioconductor.org/biocLite.R")
 #biocLite(c("parallel", "doParallel", "glmnet"), lib="/nfs/users/nfs_t/ti1/r_libs")
-.libPaths( c( .libPaths(), "/nfs/users/nfs_t/ti1/r_libs/") )
+.libPaths( c( .libPaths(), "/users/spjtcoi/brc_scratch/Rlibs") )
 library(parallel)#package 'parallel' is a base package, and should not be updated
 library(doParallel)
 library(glmnet)
@@ -13,16 +13,14 @@ register_parallel<-function(){
   #register the workers
   cores=detectCores()
 
-  print("Number of cores:")
-  print(cores)
   cl <- makeCluster(cores-1)
   registerDoParallel(cl)
-  clusterEvalQ(cl, .libPaths("/nfs/users/nfs_t/ti1/r_libs"))#Register libraries onto each core
+  clusterEvalQ(cl, .libPaths("/users/spjtcoi/brc_scratch/Rlibs"))#Register libraries onto each core
   return (cl)
 }
 
 #RUN GLMNET FOR n iterations and all parameters alpha on our dataset. 
-run_glmnet<-function(features, target, alphas, iterations, random=FALSE, measure="mse", family="gaussian"){
+run_glmnet<-function(target, features, alphas, iterations, random=FALSE){
   
   #RANDOMISE TARGET IF NECCESSARY
   if(random){ 
@@ -45,8 +43,8 @@ run_glmnet<-function(features, target, alphas, iterations, random=FALSE, measure
     output = cv.glmnet(
       x = features,
       y = target,
-      family = family,
-      type.measure = measure,
+      family = "gaussian",
+      type.measure = "mse",
       foldid = folds)#use system lambdas
     #Return GLM-Net results
     return(output)
@@ -55,6 +53,9 @@ run_glmnet<-function(features, target, alphas, iterations, random=FALSE, measure
   #Return GLMNET results for each iteration, each alpha
   return(glmnet_results)
 }
+
+
+
 
 extractGlmnetInfo <-function(object) {
   #find lambdas
@@ -227,44 +228,19 @@ generate_predictions <- function(data, feature_list, features_to_remove, output_
     data = data[, -which(colnames(data) %in% remove)]
   }
   
-  target_column = feature_list[feature_list[, 2] == "target",][["feature_name"]]
-  label_column = feature_list[feature_list[, 2] == "label",][["feature_name"]]
-  
-  if(is.null(target_column) && is.null(label_column)) {
-    print("No label or target specified. Please specify in the feature list file and restart.")
-    exit()
-  } else if(!is.null(label_column) && length(label_column) > 0) {
-    
-    features = data[, -which(colnames(data) %in% label_column)]
-    label = as.factor(data[, which(colnames(data) %in% label_column)])
-    
-    previous_na_action <- options('na.action')
-    options(na.action='na.pass')
-    
-    design_matrix = model.matrix(label ~ ., data=features)
-    null_rows =  rowSums(is.na(design_matrix)) > 0
-    
-    X = design_matrix[!null_rows, ]
-    Y  = label[!null_rows]
-    # Do your stuff...
-    options(na.action=previous_na_action$na.action)
-    
-    measure = "auc"
-    family="binomial"
-  
-    } else if(!is.null(target_column) && length(target_column) > 0) {
-    Y = data[, target_column]
-    X = as.matrix(data[, -which(colnames(data) %in% target_column)])
-    measure = "mse"
-    family="gaussian"
-    
-  } 
+  f = feature_list[feature_list[, 2] == "target",]
+  target_column =  as.character(f$feature_name)
+  print(paste0('This is my target_column: ',target_column))
+  target = as.matrix(data[, which(colnames(data) %in% target_column)])
+  features = as.matrix(data[, -which(colnames(data) %in% target_column)])
 
+print("Running predictions")
+  
   alphas <- seq(from = 0.5, to = 1, by = 0.05)
-  results = run_glmnet(X,
-                       Y,
+  results = run_glmnet(target,
+                       features,
                        alphas,
-                       100, measure = measure, family=family)
+                       100)
   
   full_results = summariseGLMNETResults(results)
   write.table(full_results, paste0(output_dir, "/accuracy", number, ".txt"),  col.names =FALSE, row.names=FALSE)
@@ -275,14 +251,13 @@ generate_predictions <- function(data, feature_list, features_to_remove, output_
     apply(full_results[subset(full_results["parameter_combi"] == x), ], 2, mean)
   }, simplify = FALSE)))
 
+
   #Feature importance calculations
   original_fi = feature_importance_stats(results)#extraction of transcript-level counts
-  #We want to increase permutations to probably a 1000
-  p_result = run_glmnet(X,
-                       Y,
-                       alphas,
-                       100, random=TRUE,measure = measure, family=family)
-  
+print("Running permutated predictions")
+#We want to increase permutations to probably a 1000
+  p_result = run_glmnet(target,features,alphas,
+                                         iterations = 100, random = TRUE)
   permutation_fi = feature_importance_stats(p_result) #extaction of transcript-level
   count_results <- generate_counts(original_fi, permutation_fi) #consolidation of
 
@@ -297,24 +272,18 @@ generate_predictions <- function(data, feature_list, features_to_remove, output_
 args <- commandArgs(trailingOnly = TRUE)#trailing only stops the argument function from requiring specification of too much information eg R version, etc
 
 #This is just for testing purposes. If you don't make it as comment, it will overwrite any values that you have given over the command line 
-
-args[1] = "/Users/ti1/Documents/data_test/dataset_1.csv"
-args[2] = "/Users/ti1/Google\ Drive/raw\ data/all_features2.csv"
-args[3] = "NONE"
-
-args[1] = "/Users/ti1/Documents/my_output.csv"
-args[2] = "/Users/ti1/Google\ Drive/raw\ data/classes_SNP_data.txt"
-args[3] = "/Users/ti1/Google\ Drive/raw\ data/example_SNP_remove.txt"
-
-
-args[4] = "~/Downloads/my_dir_test2"
+#args[1] = "/Users/ti1/Documents/data_test/dataset_3.csv"
+#args[2] = "/Users/ti1/Downloads/all_features2.csv"
+#args[3] = "/Users/ti1/Downloads/demo_features_to_remove.csv"
+#args[4] = "~/Downloads/my_dir_test"
 print(paste0('GLMNET analaysis'))
 print(paste0('Dataset:', args[1]))
 print(paste0('Feature reference: ', args[2] ))
 print(paste0('Features to remove: ', args[3] ))
 print(paste0('Output dir: ', args[4] ))
 
-data = read.csv(args[1], stringsAsFactors = FALSE)
+#data = read.csv(args[1], stringsAsFactors = FALSE, sep=' ' )# for space separated file 
+data = read.csv(args[1], stringsAsFactors = FALSE)#if comma delimited the remove
 
 #This is the fike which contains all features and its corresponding class
 #Column 1: Feature name
@@ -332,8 +301,6 @@ if(file.exists(args[3])) {
 } else {
   features_to_remove = c()
 }
-number = Sys.getenv(c("LSB_JOBINDEX"))
+number = Sys.getenv(c("SGE_TASK_ID"))
 
-#use system lambdas
-#Return GLM-Net results
 generate_predictions(data=data, feature_list, features_to_remove, output_dir = args[4], number)
