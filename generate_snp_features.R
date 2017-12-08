@@ -1,4 +1,5 @@
 library(foreign)
+library(HardyWeinberg)
 dat_1 <- read.dta("/Users/ti1/Google Drive/study2_snps_as\ predictors/additional_variables.dta")
 dat_2 <- read.dta("/Users/ti1/Google Drive/study2_snps_as\ predictors/Psychiatric diagnoses in SELCoH.dta")
 dat_3 <- read.dta("/Users/ti1/Google Drive/study2_snps_as\ predictors/SELCoH ancestry scores.dta")
@@ -40,14 +41,38 @@ snps = columns[!columns %in% c(target, features, cluster_identification, delete)
 target_data = dat_4[, c(target)]
 names(target_data)=target
 features_data = dat_4[, c(features)]
-snps_data = dat_4[, c(snps)]
+snps_data = data.frame(dat_4[, c(snps)])
+snps_data = snps_data[!colnames(snps_data) %in% c("X_merge")]
 
-features = cbind(target_data, features_data, snps_data)
+
+SNPIDs <- colnames(snps_data)
+allells = read.table("/Users/ti1/Google\ Drive/study2_snps_as\ predictors/SNPNAMES_AND_ALLELES_FOR_RECODE.txt", header=1)
+recode_raw <- lapply(SNPIDs, function(x) {
+  recode(as.matrix(snps_data[,x]), allells[[x]], values=c(0,1,2))
+}) #Returns list of SNPs each with genotypes and alleles as sublist
+
+snp_encoded =  data.frame(recode_raw)
+colnames(snp_encoded) = colnames(snps_data)
+
+features = cbind(target_data, features_data, snp_encoded)
 cols = colnames(features)
 cols[1]=target
 colnames(features) = cols 
 
 print(dim(features))
-outptut_file_pre="/Users/ti1/Documents/my_output"
-outptut_file = paste0(outptut_file_pre, ".csv")
-write.csv(features, file=outptut_file, row.names = FALSE)
+outptut_file_pre="/Users/ti1/Google\ Drive/study2_snps_as\ predictors/datasets/data_prepared"
+
+class_dist = features[,1]
+positives = which(class_dist=="yes")
+negatives = which(class_dist=="no")
+
+sapply(c(1:10), function(x) {
+  negative_sample = sample(negatives, size = 120, replace = FALSE)
+  all = c (positives, negative_sample)
+  features_sub = features[all, ]
+  outptut_file = paste0(outptut_file_pre, "_", x ,".csv")
+  #print(dim(features_sub))
+  write.csv(features_sub, file=outptut_file, row.names = FALSE)
+})
+
+
