@@ -53,7 +53,7 @@ pval_anal<-function(path, top=0, type, all_genes_names){
 		    print(subset_genes)
 		  }
 		  
-			write.csv(file=paste(path, out_name, top , '.csv', sep=""), subset_genes)
+			write.table(file=paste(path, out_name, top , '.csv', sep=""), subset_genes, quote = FALSE, row.names = FALSE, col.names = FALSE)
 		}
 }
 
@@ -79,11 +79,11 @@ read_data <-function(my_dir, input_filename){
 
 args <- commandArgs(trailingOnly = TRUE)#trailing only stops the argument function from requiring specification of too much information eg R version, etc
 print(paste0('Input directory for p value analysis:', args[1]))#This line will tell you the input directory
-#args[1] = "/Users/ti1/Google\ Drive/results/default_data/all_features/"
-#args[2] = 10
-#args[3] = "random"
+args[1] = "/Users/ti1/Documents/conrad/results/default_data/all_features/"
+args[2] = 10
+args[3] = "ranasddom"
 
-input_data=read_data("/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct", "ALL_SV6_drugnaive_hba_chip_01-09-16.RData")
+input_data=read_data("/Users/ti1/Google\ Drive/raw data/", "imputation_data_generated.RData")
 my_genes = rownames(input_data$GX_sva)
 
 if (length(args) == 3) {
