@@ -73,8 +73,8 @@ pval_anal <- function(path) {
   
   
   #scale_y_continuous(limits = quantile(log10(results$error_dev), c(0.00, 0.95))) removes the 5% outliers
-  my_plot = ggplot(data = results, aes(run_type, log10(error_dev)), outlier.shape = NA) + geom_boxplot(aes(color =
-                                                                                 run_type)) + scale_y_continuous(limits = quantile(log10(results$error_dev), c(0.00, 0.90)))
+  my_plot = ggplot(data = results, aes(run_type, (error_dev)), outlier.shape = NA) + geom_boxplot(aes(color =
+                                                                                 run_type)) + scale_y_continuous(limits = quantile((results$error_dev), c(0.00, 0.90)))
   
   
   # compute lower and upper whiskers
@@ -94,8 +94,8 @@ pval_anal <- function(path) {
 args <-commandArgs(trailingOnly = TRUE)#trailing only stops the argument function from requiring specification of too much information eg R version, etc
 print(paste0('Input directory for p value analysis:', args[1]))#This line will tell you the input directory
 
-args[1] = "C:/Users/spjtcoi/Google Drive/single_factor_analyses/"
-#args[1] = "/Users/ti1/Google Drive/new_results/"
+args[1] = "C:/Users/spjtcoi/Google Drive/bmi/categorical/classification_bmi/plot/plot"
+#args[1] = "/Users/ti1/Documents/conrad/results/snps2"
 if (length(args) == 1) {
   pval_anal(args[1])#if a single argument is entered then that paramater should be the directory path
 } 
