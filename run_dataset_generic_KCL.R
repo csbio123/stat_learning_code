@@ -310,7 +310,6 @@ args <- commandArgs(trailingOnly = TRUE)#trailing only stops the argument functi
 print(paste0('GLMNET analaysis'))
 print(paste0('Dataset:', args[1]))
 print(paste0('Feature reference: ', args[2] ))
-print(paste0('Features to remove: ', args[3] ))
 print(paste0('Output dir: ', args[4] ))
 
 data = read.csv(args[1], stringsAsFactors = FALSE)
@@ -327,6 +326,7 @@ if(!file.exists(args[2])) {
 #This file lists all classes and/or features that should be removed. It is a 1-dim list.
 #If this file doesn't exist, nothing will be removed
 if(file.exists(args[3])) {
+print(paste0('Features to remove: ', args[3] ))
   features_to_remove = read.csv(args[3], stringsAsFactors = TRUE, header=FALSE)
 } else {
   features_to_remove = c()
