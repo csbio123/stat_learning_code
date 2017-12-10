@@ -1,7 +1,7 @@
 #!/bin/sh
-#$ -N t200
+#$ -N snps_social
 #$ -q LowMemShortterm.q
-#$ -t 1-500
+#$ -t 1-10
 #$ -pe smp 10
 #$ -l h_rt=00:10:00
 #$ -o /dev/null
@@ -12,12 +12,16 @@
 #HighMemShortterm.q
 #LowMemShortterm.q
 
+#remove_abuse.txt  remove_demo.txt  remove_drug.txt  remove_events.txt  remove_snps.txt  remove_social.txt
+
+
+
 echo $SGE_TASK_ID
 
-data="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/IMPUTATION_SETS/input_files_BMI_2catg/dataset_${SGE_TASK_ID}.csv"
-feature_list="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/all_features_bmi_2categ.csv"
-features_to_remove="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/classification_bmi/full_nochip/remove_top_200.csv" #if nothing to remove then just add EMPTY (or any word) without brackets eg.features_to_remove="EMPTY" 
-output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/classification_bmi/full_nochip/t200"
+data="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/snps/data/data_prepared_${SGE_TASK_ID}.csv"
+feature_list="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/snps/feature_list/CLASSES_SNP_data.txt"
+features_to_remove="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/snps/remove/remove_social.txt" #if nothing to remove then just add EMPTY (or any word) without brackets eg.features_to_remove="EMPTY" 
+output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/snps/output/social"
 
 
 #demographic_only.csv
