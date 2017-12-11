@@ -1,0 +1,1963 @@
+a
+---
+title: "Untitled"
+author: "CI"
+date: "27 September 2016"
+output: html_document
+---
+
+26-09-16: 
+(1) svmod0 starts ~0 +
+(2) Num of Surrogate vars changes when svmod and svmod0 start "~0 + " therefore num of SVs has been recalculated
+(3) No signal therefore used all 5 or 6 SVs and now see signals for both phenotypes (obese broad and diabtes broad) as opposed to just one
+
+27-09-16
+Timepoints 2 and 3 left in
+
+24-10-16
+good probes only (n=4745)
+meds out
+drug naive as specific subgroup
+Use all SVs
+Pvalues <0.01
+
+02-11-16
+minimal SVs - only thosecorrelated, 
+
+SVs derived based on: 
+normal, prediabetes, diabetes (hba)
+healthy, pverweight, obese (bmi)
+Added in another outcome variable which excludes naive, of follow-up
+
+Check for correlation of SVs with: 
+drug naive status
+Family history
+Timepoint
+--leave in any SVs that correlate with any 1 of these
+
+
+
+
+---
+
+# From: Leirer, Daniel 
+Sent: 28 March 2016 18:40
+To: Iyegbe, Conrad
+Subject: Re: Quick query
+ 
+Hi Conrad, 
+I uploaded two lumibatch objects for you. 
+"GAP_DL_FINAL.eset_bg_log2_rsn_0.RData" contains data on 607 chips which is all the chips that were successful. 
+"GAP_DL_FINAL.eset_bg_log2_rsn.RData" contains 487 samples. This is a subset of "GAP_DL_FINAL.eset_bg_log2_rsn_0.RData" where outliers where removed based on network methods. 
+ 
+These are the two last files generated prior to ComBat and PCA. 
+ 
+In order to extract data you will need to load it into R and you can access the most important matrices as follows:
+load("GAP_DL_FINAL.eset_bg_log2_rsn.RData")
+load("GAP_DL_FINAL.eset_bg_log2_rsn_0.RData")
+ 
+expression_matrix<-exprs(eset_bg_log2_rsn)
+phenodata<-eset_bg_log2_rsn@phenoData@data
+gene_symbols<-eset_bg_log2_rsn@featureData@data
+ 
+Let me know if you have other questions. 
+ 
+Regards,
+Dan
+# ###################
+
+
+#AUTOMATIC PACKAGE INSTALLATION AND LOADING
+rm(list=ls())
+dev.off()
+
+source("https://bioconductor.org/biocLite.R")
+biocLite()#first, install bioconductor
+
+biocLite("pacman")
+library(pacman)
+pacman::p_load(lumi, splitstackshape, mice, dplyr, sva, limma, gplots, UpSetR, calibrate, SPIA) 
+
+#otherwise
+biocLite(c("lumi", "splitstackshape", "mice", "dplyr", "sva", "limma", "gplots", "UpSetR", "calibrate", "SPIA"))
+
+#phenos
+setwd("C:/Users/spjtcoi/Dropbox/MSc Neuroscience project 2015/Transcriptomics Study/Analysis")
+pump<-data.frame(read.table("ID_Chip_timepoints_Con.txt", na.strings = "NA", header=T, sep="\t", fill=T, stringsAsFactors = F))
+GRS.fep<-data.frame(read.table("fep_GRSdata.txt", na.strings = ".", header=T, sep="\t", fill=T, stringsAsFactors = F))
+pump$ethnicity2<-NULL
+#tech covars
+setwd("C:/Users/spjtcoi/Dropbox/MSc Neuroscience project 2015/Transcriptomics Study/sva")
+techvars.fep<-data.frame(read.table("fep_technicalcovars_cleanV2.txt", na.strings = "NA", header=T, sep="\t", fill=T, stringsAsFactors = T, check.names = FALSE))
+#gene expr
+load("C:/Users/spjtcoi/Dropbox/MSc Neuroscience project 2015/Transcriptomics Study/gap_precombat/GAP_DL_FINAL.eset_bg_log2_rsn.RData")
+gene_symbols<-eset_bg_log2_rsn@featureData@data
+expr.fep<-exprs(eset_bg_log2_rsn)
+gene_symbols<-eset_bg_log2_rsn@featureData@data
+
+#probe reduction
+a<-rownames(expr.fep)
+b<-rownames(gene_symbols)
+identical(a,b) #check sequence order is the same
+
+myrows<-gene_symbols$good_probe #a vector of true or false
+expr.fep<-expr.fep[myrows, ] #from 47231 to 4745 probes
+
+
+t.expr.fep<-t(expr.fep) #transpose
+t.expr.fep <- cbind(ChipIDs = rownames(t.expr.fep), t.expr.fep) #duplicate system rownames
+rownames(t.expr.fep) <- NULL # remove system rownames
+#Add "d_" prefix to protect transcript IDs: colnames(t.expr.fep)[2:47232] <- paste("d_", colnames(t.expr.fep[,c(2:47232)]), sep = "") 
+
+#clean
+#pump$Weight<-NULL #height is more complete#X
+#pump$Cloz<-NULL #all values are zero#X
+#pump$med.days<-NULL#X
+
+pump["med.days"== 0]<- 0.1#1)change value from absolute zero prior to tranformation
+
+rm(expr.fep, eset_bg_log2_rsn, a, b)
+
+#Add normally distributed reference variable
+set.seed(249259)
+pump<-cbind(pump, z=rnorm(210, mean=10, sd=3))
+
+#boxcox function
+box.cox <- function(x, parms=c(1,0)) {
+lambda <- parms[1]
+offset <- parms[2]
+if (lambda==0) log(x+offset) else ((x+offset)^lambda - 1)/lambda
+}
+threepoint <- function(x, y, ladder=c(1, 1/2, 1/3, 0, -1/2, -1)) { # x and y are length-three samples from a dataset.
+dx <- diff(x)
+f <- function(parms) (diff(diff(box.cox(y, parms)) / dx))^2
+fit <- nlm(f, c(1,0))
+parms <- fit$estimate #$
+lambda <- ladder[which.min(abs(parms[1] - ladder))]
+if (lambda==0) offset = 0 else {
+do <- diff(range(y))
+offset <- optimize(function(x) f(c(lambda, x)),
+c(max(-min(x), parms[2]-do), parms[2]+do))$minimum
+}
+c(lambda, offset)
+}
+
+#Apply Boxcox function
+
+data <- cbind(pump$Age, pump$z)
+n <- dim(data)[1]
+i3 <- c(2, floor((n+1)/2), n-1)
+parms.Age <- threepoint(pump$z[i3], pump$Age[i3])
+Age.norm <- box.cox(pump$Age, parms.Age)
+#parms.Age contains values (lambda, offset). Lambda corresponds to power
+
+data <- cbind(pump$hba1c, pump$z)
+n <- dim(data)[1]
+i3 <- c(2, floor((n+1)/2), n-1)
+parms.hba1c <- threepoint(pump$z[i3], pump$hba1c[i3])
+hba1c.norm <- box.cox(pump$hba1c, parms.hba1c)
+
+data <- cbind(pump$TriG, pump$z)
+n <- dim(data)[1]
+i3 <- c(2, floor((n+1)/2), n-1)
+parms.TriG <- threepoint(pump$z[i3], pump$TriG[i3])
+TriG.norm <- box.cox(pump$TriG, parms.TriG)
+
+data <- cbind(pump$fglu, pump$z)
+n <- dim(data)[1]
+i3 <- c(2, floor((n+1)/2), n-1)
+parms.fglu <- threepoint(pump$z[i3], pump$fglu[i3])
+fglu.norm <- box.cox(pump$fglu, parms.fglu)
+
+data <- cbind(pump$Height, pump$z)
+n <- dim(data)[1]
+i3 <- c(2, floor((n+1)/2), n-1)
+parms.Height <- threepoint(pump$z[i3], pump$Height[i3])
+Height.norm <- box.cox(pump$Height, parms.Height)
+
+data <- cbind(pump$BMI, pump$z)
+n <- dim(data)[1]
+i3 <- c(2, floor((n+1)/2), n-1)
+parms.BMI <- threepoint(pump$z[i3], pump$BMI[i3])
+BMI.norm <- box.cox(pump$BMI, parms.BMI)
+
+*********************************************
+## #REGARDING NORMALISATION of PC1 and PC2 ##
+--- PC and Genetic Ancestry data does not do well with this transformation. Probably because values are not strictly positive (see answer 2 on following page): http://stats.stackexchange.com/questions/61217/transforming-variables-for-multiple-regression-in-r
+install.packages("car")
+library(car)
+boxCox(pump$PC1 ~ pump$z, family="yjPower", plotit = TRUE) #result inconclusive
+Taking logs of Genetic ancestry also works poorly
+# Using r's gladder equivalent also failed: 
+install.packages("HH")
+library(HH)
+ladder(pump$PC1 ~ pump$z, scales=list(relation="free")) 
+
+# Explored correlation betw genetic and GWAS ancestry
+cor(pump$african, pump$PC1, use="pairwise.complete.obs", method="spearman") #rho=0.84
+cor(pump$african, pump$PC2, use="pairwise.complete.obs", method="spearman") #rho=0.42
+cor(pump$Indian, pump$PC1, use="pairwise.complete.obs", method="spearman") #rho=-0.33
+cor(pump$Indian, pump$PC2, use="pairwise.complete.obs", method="spearman") #rho=0.23
+
+cor(pump$african, pump$PC1, use="pairwise.complete.obs", method="pearson") #r=0.97
+cor(pump$african, pump$PC2, use="pairwise.complete.obs", method="pearson") #r=-0.18
+cor(pump$Indian, pump$PC1, use="pairwise.complete.obs", method="pearson") #r=-0.33
+cor(pump$Indian, pump$PC2, use="pairwise.complete.obs", method="pearson") #r=0.76
+--- The above result suggests using genetic ancestry as predictor of PC1 & PC2 missings, under pmm model.
+--- Worth a try - method "preserves non-linear relations "even if the structural part of the imputation model is wrong" (p18)
+--- Not possible to normalise African and Indian using Box-Cox method however, so will attempt to do this using vars as they are.
+********************************************
+
+
+#return normalised vars to pump
+pump<-cbind(pump, Age.norm, BMI.norm, fglu.norm, hba1c.norm, Height.norm, TriG.norm)
+pump<-merge(pump, GRS.fep, by="FolderID", all.x=TRUE)
+
+# Column move
+moveMe <- function(data, tomove, where = "last", ba = NULL) {
+  temp <- setdiff(names(data), tomove)
+  x <- switch(
+    where,
+    first = data[c(tomove, temp)],
+    last = data[c(temp, tomove)],
+    before = {
+      if (is.null(ba)) stop("must specify ba column")
+      if (length(ba) > 1) stop("ba must be a single character string")
+      data[append(temp, values = tomove, after = (match(ba, temp)-1))]
+    },
+    after = {
+      if (is.null(ba)) stop("must specify ba column")
+      if (length(ba) > 1) stop("ba must be a single character string")
+      data[append(temp, values = tomove, after = (match(ba, temp)))]
+    })
+  x
+}
+
+#copy chip IDs prior to split (Chip IDs are needed for merge with tech vars)
+#---http://stackoverflow.com/questions/7531868/how-to-rename-a-single-column-in-a-data-frame-in-r
+
+library(splitstackshape)
+
+pump[length(pump)+1]<-pump[,2]
+pump<-moveMe(pump, c("V30"), "after", "FolderID")
+pump<-cSplit(pump, "ChipID", sep="_", stripWhite=TRUE, type.convert=FALSE) #split chip id
+colnames(pump)[2] <- "ChipID"
+
+
+
+
+************************************************************
+pump.corr <- subset(pump, select=-c(ChipID, White, Height, BMI, Age, hba1c, fglu, TriG, z, ChipID_1, ChipID_2)) #Cloz  is invariant and returns NA values
+#pump.corr: for correlation analysis only (correlation analysis using main pump file proved difficult due to many non-numeric data types)
+round(cor(pump.corr, use="pair"), 3) #examine for impt correlations
+missing.summm <-md.pattern(pump.corr) #missingness table
+
+#Same again, this time INCLUDING non-normalised vars also, as some imputation will be done using logistic regression, where normality not an issue
+pump.corr2 <- subset(pump, select=-c(ChipID, z, ChipID_1, ChipID_2)) #Cloz  is invariant and returns NA values
+round(cor(pump.corr2, use="pair"), 3) #examine for impt correlations
+#result: did not find any un-normalised vars that could be considered predictors of RispQuet, Olanzapine. These drugs best predict each other
+
+# checking that impt correlations stay impt under spearmans....
+cor(pump$TriG.norm, pump$PC1, use="pairwise.complete.obs", method="spearman")
+cor(pump$Indian, pump$PC2, use="pairwise.complete.obs", method="spearman")
+cor(pump$Height.norm, pump$gender, use="pairwise.complete.obs", method="spearman")
+cor(pump$RispQuet, pump$Olanz, use="pairwise.complete.obs", method="spearman")
+# Overall findings from correlation analysis.......
+Variable    Number missing       Selective correlations >0.2
+____________________________________________________________....
+PC1             (45)           African, Indian, TriG.norm
+PC2             (38)           Indian, Height.norm
+Age.norm         (8)           fglu.norm, hba1c.norm* (cannot use both, so asterisk indicates which variable more strongly correlates with Age - Pearson is appropriate test
+BMI.norm        (41)           fglu.norm, hba1c.norm* #pearson is appropriate test
+fglu.norm       (17)           Age.norm, BMI.norm, hba1c.norm** Key:**Effect>0.6
+hba1c.norm      (16)           Age.norm, BMI.norm, fglu.norm**
+Height.norm     (34)           gender**, PC2
+TriG.norm       (16)           PC1
+Olanz           (22)           RispQuet, PC2
+RispQuet        (22)           Olanz
+***************************************************************
+*******************************************************************
+
+
+#Merge technical covariates prior to imputation
+library(mice)
+library(dplyr)
+pump<-as.data.frame(pump) #somehow pump is now both class 'datatable' and 'dataframe' the former is problematic for the following merge
+pump.imp<-inner_join(pump, techvars.fep, by = c("ChipID" = "Sample.ID"), copy=TRUE)#note use of inner join
+pump.imp<-subset(pump.imp, , -c(Age, BMI, fglu, hba1c, Height, TriG, Sentrix.Barcode, z))#deletion of multiple redundant cols
+
+dry.run<- mice(pump.imp, maxit = 0, print=FALSE)
+pred<-dry.run$pred
+method<-dry.run$method
+
+#Blank and fill-in pred matrix
+pred[] <- 0L            #fill pred (class matrix) with zeros: http://stackoverflow.com/questions/28030454/how-to-fill-matrix-with-0
+
+pred["PC1","african"]<-1
+pred["PC1","Indian"]<-1
+pred["PC1","TriG.norm"]<-1
+pred["PC2","Indian"]<-1
+pred["PC2","Height.norm"]<-1
+pred["Age.norm","hba1c.norm"]<-1 #cannot accomodate both hba1c and fglu as predictors, due to their correlation
+pred["BMI.norm","hba1c.norm"]<-1 #cannot accomodate both hba1c and fglu as predictors, due to their correlation
+pred["fglu.norm","Age.norm"]<-1
+pred["fglu.norm","BMI.norm"]<-1
+pred["fglu.norm","hba1c.norm"]<-1
+pred["hba1c.norm","Age.norm"]<-1
+pred["hba1c.norm","BMI.norm"]<-1
+pred["hba1c.norm","fglu.norm"]<-1
+pred["Height.norm","gender"]<-1
+pred["Height.norm","PC2"]<-1
+pred["TriG.norm","PC1"]<-1
+pred["Olanz","RispQuet"]<-1
+pred["Olanz","PC2"]<-1
+pred["RispQuet","Olanz"]<-1
+
+#Blank and fill-in method matrix
+method["ChipID"]<-""
+method["Timepoint"]<-""
+method["gender"]<-""
+method["White"]<-"" #not needed if already using african
+method["african"]<-"sample" #on basis that missing ancestry means GWAS PC data less likely. Only recourse thus to work with randomly-sampled values from the observed data.
+method["Indian"]<-"sample"
+method["PC1"]<-"pmm"
+method["PC2"]<-"pmm"
+method["Olanz"]<-"logreg"
+method["RispQuet"]<-"logreg"
+method["med.days"]<-"pmm"
+method["Age.norm"]<-"norm"#subject to check for normal resids
+method["BMI.norm"]<-"norm"#subject to check for normal resids
+method["fglu.norm"]<-"norm"#subject to check for normal resids
+method["hba1c.norm"]<-"norm"#subject to check for normal resids
+method["Height.norm"]<-"pmm"
+method["TriG.norm"]<-"pmm"
+method["GLUCOSE_GRS"]<-"pmm"
+method["OBSESITY_GRS"]<-"pmm"
+method["ChipID_1"]<-""
+method["ChipID_2"]<-""
+method["SampleSection"]<-""
+method["Batch"]<-""
+method["Date_out"]<-""
+method["Date_extraction"]<-""
+method["person"]<-""
+method["Conc_Nanodrop"]<-""
+method["Date_Dilutionand_Amplification"]<-""
+method["Date_cRNApurification"]<-""
+method["Date_Quantitation_by_RiboGreen"]<-""
+method["Eluted_Total_labelled_cRNA"]<-""
+method["labelled_cRNA_Yield"]<-""
+method["concentration_of_labelled_cRNA"]<-""
+method["Date_labelled_cRNA"]<-""
+method["Date_Hybridization_for_15_hours"]<-""
+method["Date_Washing_and_scanning"]<-""
+
+#med.days, GLUCOSE_GRS, OBSESITY_GRS #NEXT TIME AROUND INCLUDE THESE IN IMPUTATION: Done 27-03-17 
+#predictive mean matching: http://statisticalhorizons.com/predictive-mean-matching
+#pmm requires specification of predictors
+
+#specify dichotomous vars as factors, for imputation to proceed smoothly
+pump.imp$Olanz<-factor(pump.imp$Olanz) 
+pump.imp$RispQuet<-factor(pump.imp$RispQuet)
+
+imp.out<-mice(pump.imp, m = 500, meth = method, pred = pred, maxit = 20, vis = "monotone", print = FALSE, seed=9212)
+
+test.obj  <- vector("list", 500)
+for (i in 1:500){
+  test.obj[[i]] <- complete(imp.out, i)
+}
+
+**********************************************
+# Checking imputation output
+---explore imputations of interest
+imp.out$imp$PC1
+imp.out$imp$PC2
+imp.out$imp$Age.norm
+imp.out$imp$BMI.norm
+imp.out$imp$fglu.norm
+imp.out$imp$Height.norm
+imp.out$imp$TriG.norm
+imp.out$imp$Olanz
+imp.out$imp$RispQuet
+imp.out$imp$african
+imp.out$imp$Indian
+
+---Sanity checks
+summary(imp.out$imp$PC1)
+summary(imp.out$imp$PC2)
+summary(imp.out$imp$Age.norm)
+summary(imp.out$imp$BMI.norm)
+summary(imp.out$imp$fglu.norm)
+summary(imp.out$imp$Height.norm)
+summary(imp.out$imp$TriG.norm)
+summary(imp.out$imp$Olanz)
+summary(imp.out$imp$RispQuet)
+summary(imp.out$imp$african)
+summary(imp.out$imp$Indian)
+*********************************************
+#Plot
+#---http://datascienceplus.com/imputing-missing-data-with-r-mice-package/
+library(lattice)
+xyplot(imp.out,Age.norm ~ +BMI.norm+fglu.norm+Height.norm + TriG.norm+PC1+PC2+Olanz+RispQuet+african+Indian,pch=18,cex=1)
+
+
+#untransform
+#--- About boxcox: http://stats.stackexchange.com/questions/35711/box-cox-like-transformation-for-independent-variables
+#--- Reversal of Boxcox: https://www.isixsigma.com/topic/help-needed-cant-reverse-box-cox-transform-results/
+
+# Precheck to confirm that retranformation to original data works....
+Age.revert<-((Age.norm*-1 + 1)^(1/-1))-21
+test<-cbind(Age.revert, pump$Age)
+
+fglu.revert<-((fglu.norm*-1 + 1)^(1/-1))-1.07
+test<-cbind(fglu.revert, pump$fglu)
+
+BMI.revert<-((BMI.norm*-1 + 1)^(1/-1))-13.1
+test<-cbind(BMI.revert, pump$BMI)
+
+hba1c.revert<-((hba1c.norm*-1 + 1)^(1/-1))-0.4
+test<-cbind(hba1c.revert, pump$hba1c)
+
+Height.revert<-((Height.norm*-1 + 1)^(1/-1))-21.3
+test<-cbind(Height.revert, pump$Height)
+
+TriG.revert<-((TriG.norm*-0.5 + 1)^(1/-0.5))-3.31
+test<-cbind(TriG.revert, pump$TriG)
+
+
+#Clean (if precheck has been successful)
+rm(Age.norm, fglu.norm, BMI.norm, hba1c.norm, Height.norm, TriG.norm, test, dry.run, data, i3, n)
+
+
+
+#Untransform 
+Untransformed.list<-vector("list", 500)
+for(i in 1:500) {
+v<-test.obj[[i]]
+v$Age.norm<-((v$Age.norm*-1 + 1)^(1/-1))-21
+v$fglu.norm<-((v$fglu.norm* -1 + 1)^(1/-1))-1.07
+v$BMI.norm<-((v$BMI.norm*-1 + 1)^(1/-1))-13.1
+v$hba1c.norm<-((v$hba1c.norm*-1 + 1)^(1/-1))-0.4
+v$Height.norm<-((v$Height.norm*-1 + 1)^(1/-1))-21.3
+v$TriG.norm<-((v$TriG.norm*-0.5 + 1)^(1/-0.5))-3.31
+Untransformed.list[[i]]<-v
+}
+
+
+#copy normalised vars
+renamed.list<-vector("list", 500)
+for(i in 1:500) {
+k<-Untransformed.list[[i]]
+k$BMI.catg<-k$BMI.norm
+k$fglu.catg<-k$fglu.norm
+k$hba1c.catg<-k$hba1c.norm
+renamed.list[[i]]<-k
+}
+
+#reposition vars
+reordered.list<-vector("list", 500)
+for(i in 1:500) {
+m<-renamed.list[[i]]
+m<-moveMe(m, c("BMI.catg"), "after", "BMI.norm")
+m<-moveMe(m, c("fglu.catg"), "after", "fglu.norm")
+m<-moveMe(m, c("hba1c.catg"), "after", "hba1c.norm")
+reordered.list[[i]]<-m
+}
+
+
+***BMI***
+> Underweight:0.0-18.5
+> Health weight:18.6-24.9
+> Overweight:25.0-29.9
+> Obese:>30.0
+
+recodebmi.list<-vector("list", 500)
+for(i in 1:500) {
+n<-reordered.list[[i]]
+n$BMI.catg[n$BMI.norm >= 0 & n$BMI.norm <=18.5] <- "healthy"# PUT THIS AS HEALTHY
+n$BMI.catg[n$BMI.norm>18.5 & n$BMI.norm <= 24.9] <- "healthy"
+n$BMI.catg[n$BMI.norm >24.9 & n$BMI.norm <= 29.9] <- "overweight"
+n$BMI.catg[n$BMI.norm >29.9 & n$BMI.norm <70.0] <- "obese"
+recodebmi.list[[i]]<-n
+}
+
+***FGLU***
+> normal:0-5.5mmol/l
+> prediabetes:5.6-7mmol/l
+> diabetes:>7mmol/l
+
+recodefglu.list<-vector("list", 500)
+for(i in 1:500) {
+o<-recodebmi.list[[i]]
+o$fglu.catg[o$fglu.norm >= 0 & o$fglu.norm <=5.5] <- "normal"
+o$fglu.catg[o$fglu.norm >5.5 & o$fglu.norm <= 7.0] <- "prediabetes"
+o$fglu.catg[o$fglu.norm >7.0 & o$fglu.norm <20.0] <- "diabetes"
+recodefglu.list[[i]]<-o
+}
+***HBA1C***
+> clinical_cutoffs:HBA
+> normal:0-5.9%
+> prediabetes:6.0-6.4%
+> diabetes:>6.5%
+
+recodehba.list<-vector("list", 500)
+for(i in 1:500) {
+p<-recodefglu.list[[i]]
+p$hba1c.catg[p$hba1c.norm >= 0 & p$hba1c.norm <=5.9] <- "normal"
+p$hba1c.catg[p$hba1c.norm >5.9 & p$hba1c.norm <= 6.4] <- "prediabetes"
+p$hba1c.catg[p$hba1c.norm >6.4 & p$hba1c.norm <15.0] <- "diabetes"
+recodehba.list[[i]]<-p
+}
+
+
+#factor and reorder factor level - in one step
+imp.out.all.list  <- lapply(
+    recodehba.list,
+    function(df) {
+        df$hba1c.catg <- factor(df$hba1c.catg, levels=c('normal', 'prediabetes', 'diabetes'))
+        df$fglu.catg <- factor(df$fglu.catg, levels=c('normal', 'prediabetes', 'diabetes'))
+        df$BMI.catg <- factor(df$BMI.catg, levels=c('healthy', 'overweight', 'obese'))
+        return(df)
+    }
+)
+
+
+#Otherfactors...
+
+imp.out.all.list2  <- lapply(
+  imp.out.all.list,
+  function(df) {
+      df$ChipID_2<-as.factor(df$ChipID_2)
+      df$Batch<-as.factor(df$Batch)
+      df$Date_out<-as.factor(df$Date_out)
+      df$person<-as.factor(df$person)
+      df$Date_out<-as.factor(df$Date_out)
+      df$Date_Dilutionand_Amplification<-as.factor(df$Date_Dilutionand_Amplification)
+      df$Date_cRNApurification<-as.factor(df$Date_cRNApurification)
+      df$Date_Quantitation_by_RiboGreen<-as.factor(df$Date_Quantitation_by_RiboGreen)
+      df$Date_labelled_cRNA<-as.factor(df$Date_labelled_cRNA)
+      df$Date_Hybridization_for_15_hours<-as.factor(df$Date_Hybridization_for_15_hours)
+      df$Date_Washing_and_scanning<-as.factor(df$Date_Washing_and_scanning)
+      return(df)
+    }
+)
+
+
+
+-------------
+All timepoints
+-------------
+#Remove duplicate FolderIDs
+imp.list.Tall <- lapply(imp.out.all.list2, function(z) z[order(z$FolderID, z$Timepoint),])
+imp.list.Tall<- lapply(imp.list.Tall, function(z) z[!duplicated(z$FolderID),])
+
+head(sapply(imp.list.Tall, NROW), 50)
+tail(sapply(imp.list.Tall, NROW), 50)
+
+#Remove duplicate ChipIDs
+imp.list.Tall <- lapply(imp.list.Tall, function(z) z[order(z$ChipID, z$Timepoint),])
+imp.list.Tall <- lapply(imp.list.Tall, function(z) z[!duplicated(z$ChipID),])
+head(sapply(imp.list.Tall, NROW), 50)
+tail(sapply(imp.list.Tall, NROW), 50)
+
+----------------
+Timepoint 1 only
+----------------
+imp.list.T1 <- lapply(imp.out.all.list2, function(z) z[z$Timepoint==1,])#new
+imp.list.T1 <- lapply(imp.list.T1, function(z) z[order(z$FolderID),])
+imp.list.T1 <- lapply(imp.list.T1, function(z) z[!duplicated(z$FolderID),])
+head(sapply(imp.list.T1, NROW), 50)
+tail(sapply(imp.list.T1, NROW), 50)
+
+imp.list.T1 <- lapply(imp.list.T1, function(z) z[order(z$ChipID),])
+imp.list.T1 <- lapply(imp.list.T1, function(z) z[!duplicated(z$ChipID),])
+head(sapply(imp.list.T1, NROW), 50)
+tail(sapply(imp.list.T1, NROW), 50)
+--
+
+
+
+#Clean
+rm(parms.Age, parms.BMI, parms.fglu, parms.hba1c, parms.Height, parms.TriG, box.cox, threepoint, k,m,n,o,p,v,pred,i,method, recodebmi.list, recodefglu.list, recodehba.list, renamed.list, reordered.list, Untransformed.list)
+
+
+
+
+***SV estimation***
+# NOte
+#initially had wanted to produce empirical SVs based on reduced sample with NAs removed. 
+#This proved problematic because the reduced sample is so small (n=54) that it contains few (or no) obs that meet diagnosis of diabetes or obesity
+#Therefore dumped the idea in favour of doing SV estimation separately on each imputed dataset
+#NB.colnums differ betw imp.out.base and gx.prejoin.1. Therefore colnums in script are below specific for prejoin objects (ie. 1 to n)
+
+#PRE-LOOP
+library(sva)
+---------------------------------------------------
+gx.prejoin.1<-imp.list.Tall[[1]] #SVs seem to be fairly robust therefore will generate SVs based on first imputation set and apply generically
+gx.postjoin.1<-inner_join(gx.prejoin.1, t.expr.fep, by = c("ChipID" = "ChipIDs"), copy=TRUE)
+
+dim(gx.postjoin.1) ###################################################currently 97 obs
+head(data.frame(colnames(gx.postjoin.1)), 54)#GX starts at col43
+gx.postjoin.1[,43:length(gx.postjoin.1)] = apply(gx.postjoin.1[,43:length(gx.postjoin.1)], 2, function(x) as.numeric(as.character(x))) 
+
+#counts
+table(gx.postjoin.1$hba1c.catg)
+table(gx.postjoin.1$fglu.catg) # baseline diabetics = 0, follow diabetics = 1 therefore less power
+table(gx.postjoin.1$BMI.catg)
+
+
+#Further descriptives...
+#http://www.cookbook-r.com/Manipulating_data/Summarizing_data/
+library(plyr)
+hba1c.descrip <- ddply(gx.postjoin.1, c("hba1c.catg"), summarise,
+            N    = length(hba1c.norm),
+            mean = mean(hba1c.norm),
+            sd   = sd(hba1c.norm),
+            se   = sd / sqrt(N),
+            min  = min(hba1c.norm),
+            max  = max(hba1c.norm))
+BMI.descrip <- ddply(gx.postjoin.1, c("BMI.catg"), summarise,
+            N    = length(BMI.norm),
+            mean = mean(BMI.norm),
+            sd   = sd(BMI.norm),
+            se   = sd / sqrt(N),
+            min  = min(BMI.norm),
+            max  = max(BMI.norm))
+
+
+# Cutoffs
+clinical_cutoffs:HBA
+normal:0-5.9%
+prediabetes:6.0-6.4%
+diabetes:>6.5%
+
+Clinical cutoffs: BMI
+Underweight:0.0-18.5
+Health weight:18.6-24.9
+Overweight:25.0-29.9
+Obese:>30.0
+
+_____
+
+#excision expression data
+GX.sva<-t(gx.postjoin.1[-c(1:42)]) #transpose
+colnames(GX.sva)<-gx.postjoin.1[,2]#re-attachment of colnames #!!!check for consistency
+
+#excision of phenos
+pheno.sva<-gx.postjoin.1[-c(43:length(gx.postjoin.1))] #excise phenos
+
+# Pre-SV notes: technical confounders have similar distribution patterns - therefore only need one representative from each of following 3 blocks
+table(pheno.sva$Date_out)#Block 1:choose this
+table(pheno.sva$Date_extraction)
+
+table(pheno.sva$Date_Dilutionand_Amplification)#Block 2:CHOOSE THIS
+table(pheno.sva$Date_cRNApurification)
+table(pheno.sva$Date_Quantitation_by_RiboGreen)
+
+table(pheno.sva$Date_labelled_cRNA)#Block 3:choose this
+table(pheno.sva$Date_Hybridization_for_15_hours)
+table(pheno.sva$Date_Washing_and_scanning)
+
+#NB. for future note better to leave coding of tech covars as late as possible to avoid creation of empty factor levels as individual IDs fall out.
+#Issues here can be due to empty factors - check using table. If this is the case then either (i) delete redundant factor #levels:http://stackoverflow.com/questions/29639680/r-table-function-how-to-remove-0-counts  or (ii) in the case of an identifier, simply convert back to character and then back to #factor
+
+# SV check: BMI.catg###############################################################################
+
+pheno.mini<-pheno.sva[,c("FolderID", "ChipID", "ChipID_1", "gender", "ChipID_2", "PC1", "PC2", "Age.norm", "BMI.catg", "hba1c.catg", "Olanz", "RispQuet", "med.days", "GLUCOSE_GRS", "OBSESITY_GRS",  "Timepoint")] #<-add medication?
+
+
+table(pheno.mini$ChipID_1) #check for redundant factor levels
+pheno.mini$ChipID_1<-as.character(pheno.mini$ChipID_1)
+pheno.mini$ChipID_1<-as.factor(pheno.mini$ChipID_1)#redundant factor levels removed
+
+------------------------------
+#copied here from meds step
+list<-c(118, 133, 227, 237, 241, 247, 249, 250, 263, 265, 287, 307, 319, 320, 384, 403, 415, 434, 491, 499, 512, 531, 583, 591, 607, 621, 623, 624, 638, 660, 664, 671, 683, 698, 718) #all drug naive cases
+
+pheno.mini["dnaive"]<-0 #create new column for drug naive status - fill with zeros
+pheno.mini$dnaive[pheno.mini$FolderID %in% list]<-1
+------------------------------
+
+svmod0 = model.matrix(~ 0 + Age.norm + gender + PC1 + PC2 + ChipID_2 + Timepoint + med.days + GLUCOSE_GRS + OBSESITY_GRS, data=pheno.mini) 
+# 240117_r331.Rmd does not include GRSs. Also ChipID_1 removed because of low counts for some chips
+svmod.bmi.catg = model.matrix(~ 0 + BMI.catg + Age.norm + gender + PC1 + PC2 + ChipID_2 + Timepoint + med.days + GLUCOSE_GRS + OBSESITY_GRS, data=pheno.mini)
+bmi.numsv=num.sv(GX.sva, svmod.bmi.catg, method="be") #n=5 checked:05-15-16
+svobj.bmi.catg = sva(GX.sva, svmod.bmi.catg, svmod0,n.sv=bmi.numsv) #calculates and counts surrogate vars#generate SVs first..
+
+
+# check correlates of svs
+summary(lm(svobj.bmi.catg$sv ~ pheno.sva$Batch))
+summary(lm(svobj.bmi.catg$sv ~ pheno.sva$SampleSection))
+summary(lm(svobj.bmi.catg$sv ~ pheno.sva$Date_out))
+summary(lm(svobj.bmi.catg$sv ~ pheno.sva$Date_labelled_cRNA))
+summary(lm(svobj.bmi.catg$sv ~ pheno.sva$Conc_Nanodrop))
+summary(lm(svobj.bmi.catg$sv ~ pheno.sva$Date_Dilutionand_Amplification))
+summary(lm(svobj.bmi.catg$sv ~ pheno.sva$labelled_cRNA_Yield))
+summary(lm(svobj.bmi.catg$sv ~ pheno.sva$Eluted_Total_labelled_cRNA))
+summary(lm(svobj.bmi.catg$sv ~ pheno.sva$person))
+#IMPT ARE THERE ANY SIG CORRELATIONS WITH TIMEPOINT????
+summary(lm(svobj.bmi.catg$sv ~ pheno.sva$Timepoint)) #svs 2 and 5 correlate with timepoint at p<0.05 level #<-Leave out?
+summary(lm(svobj.bmi.catg$sv ~ pheno.sva$BMI.catg))
+
+summary(lm(svobj.bmi.catg$sv ~ pheno.sva$gender))
+summary(lm(svobj.bmi.catg$sv ~ pheno.sva$ChipID_2))
+summary(lm(svobj.bmi.catg$sv ~ pheno.sva$Age.norm))
+summary(lm(svobj.bmi.catg$sv ~ pheno.sva$med.days))
+summary(lm(svobj.bmi.catg$sv ~ pheno.sva$GLUCOSE_GRS))
+summary(lm(svobj.bmi.catg$sv ~ pheno.sva$OBSESITY_GRS))
+
+
+# SV check: HBA1c.catg###############################################################################
+svmod0 = model.matrix(~ 0 + Age.norm + gender + PC1 + PC2 + ChipID_2 + Timepoint + med.days + GLUCOSE_GRS + OBSESITY_GRS, data=pheno.mini)
+svmod.hba1c.catg = model.matrix(~ 0 + hba1c.catg + Age.norm + gender + PC1 + PC2 + ChipID_2 + Timepoint + med.days + GLUCOSE_GRS + OBSESITY_GRS, data=pheno.mini)
+hba1c.numsv = num.sv(GX.sva, svmod.hba1c.catg, method="be") #n=5 CHECKED 25-10-16
+#NB. num.sv supports phenotype in i) either integer or factor form ii) a factor with multiple (>3) categories
+svobj.hba1c.catg = sva(GX.sva,svmod.hba1c.catg,svmod0,n.sv=hba1c.numsv)#calculates and counts surrogate vars #generate svs
+
+
+# Optional
+summary(lm(svobj.hba1c.catg$sv ~ pheno.sva$Batch)) #check for correlates of svs
+summary(lm(svobj.hba1c.catg$sv ~ pheno.sva$SampleSection))
+summary(lm(svobj.hba1c.catg$sv ~ pheno.sva$Date_out))
+summary(lm(svobj.hba1c.catg$sv ~ pheno.sva$Date_labelled_cRNA))
+summary(lm(svobj.hba1c.catg$sv ~ pheno.sva$Conc_Nanodrop))
+summary(lm(svobj.hba1c.catg$sv ~ pheno.sva$Date_Dilutionand_Amplification))
+summary(lm(svobj.hba1c.catg$sv ~ pheno.sva$labelled_cRNA_Yield))
+summary(lm(svobj.hba1c.catg$sv ~ pheno.sva$Eluted_Total_labelled_cRNA))
+summary(lm(svobj.hba1c.catg$sv ~ pheno.sva$person))
+#IMPT ARE THERE ANY SIG CORRELATIONS WITH TIMEPOINT????
+summary(lm(svobj.hba1c.catg$sv ~ pheno.sva$Timepoint)) #svs 2 and 5 correlate with timepoint at p<0.05 level  #<-Leave out?
+summary(lm(svobj.hba1c.catg$sv ~ pheno.sva$hba1c.catg))
+
+summary(lm(svobj.hba1c.catg$sv ~ pheno.sva$gender))
+summary(lm(svobj.hba1c.catg$sv ~ pheno.sva$ChipID_2))
+summary(lm(svobj.hba1c.catg$sv ~ pheno.sva$Age.norm))
+summary(lm(svobj.hba1c.catg$sv ~ pheno.sva$med.days))
+summary(lm(svobj.hba1c.catg$sv ~ pheno.sva$GLUCOSE_GRS))
+summary(lm(svobj.hba1c.catg$sv ~ pheno.sva$OBSESITY_GRS))
+
+# Correlation between SVs for multi-category traits (bmi vs hba1c)
+cor(svobj.hba1c.catg$sv, svobj.bmi.catg$sv, method = "spearman") #SVs1-5: correlation >0.99; SV6:r=-0.91
+
+#Keep partial Svs
+bmi.sv.10<-svobj.bmi.catg$sv
+bmi.sv.2<-as.matrix(bmi.sv.10[,-c(1:3, 6:10)]) #Keep Svs 4 & 5
+
+hba.sv.10<-svobj.hba1c.catg$sv
+hba.sv.2<-as.matrix(hba.sv.10[,-c(1:3, 6:10)]) #Keep Svs 4 & 5
+
+svmod.bmi.catg.sv = cbind(svmod.bmi.catg, bmi.sv.2)
+colnames(svmod.bmi.catg.sv)[23:24] <- c("sv4", "sv5")  
+colnames(svmod.bmi.catg.sv)[1:3] <- c("hlth", "ovwgt", "obese")
+ 
+svmod.hba1c.catg.sv = cbind(svmod.hba1c.catg, hba.sv.2)
+colnames(svmod.hba1c.catg.sv)[23:24] <- c("sv4", "sv5")
+colnames(svmod.hba1c.catg.sv)[1:3] <- c("norm", "pre", "dbx")
+
+
+#Cleanup
+rm(bmi.sv.10, GRS.fep, hba.sv.10, pump, bmi.numsv, hba1c.numsv, moveMe, bmi.sv.2, hba.sv.2, techvars.fep, myrows)
+-------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------
+Machine Learning Branch-off point
+-------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+#22/09/16
+#fit2 = lmFit(eset, design2)
+#contrast.matrix = makeContrasts(diab-resist, diab-nondiab, resist-nondiab, levels=design2)
+#fit2 = contrasts.fit(fit2, contrast.matrix)
+
+library(limma)
+fit1.bmi=lmFit(GX.sva, svmod.bmi.catg.sv)
+fit1.hba1c=lmFit(GX.sva, svmod.hba1c.catg.sv)
+
+#view factor levels prior to contrast matrix
+levels(pheno.mini$BMI.catg)
+levels(pheno.mini$hba1c.catg)
+
+
+
+#Create contrast matix
+contrast.matx.bmi <- makeContrasts (obese-hlth, ovwgt-hlth, (ovwgt + obese)/2 - hlth, obese - (ovwgt + hlth)/2, levels = svmod.bmi.catg.sv) 
+#(overweight + obese)/2 - overweightplus.fu, is equivalent to >ovweight at baseline vs overweight at follow-up
+contrast.matx.hba <- makeContrasts (dbx - norm, pre - norm, (dbx + pre)/2 - norm, dbx - (pre + norm)/2, levels = svmod.hba1c.catg.sv)
+
+fit2.bmi=contrasts.fit(fit1.bmi, contrast.matx.bmi)
+fit2.hba=contrasts.fit(fit1.hba1c, contrast.matx.hba)
+
+fit2.bmi<-eBayes(fit2.bmi) ###use eBayes() to moderate the estimated error variances
+fit2.hba<-eBayes(fit2.hba)
+
+#Extract all differentially-expressed genes, with associated p-value and fold-change for a particular contrast: TOPTABLE
+#much of this taken from downloaded pdf handout entitled:
+Bioconductor Tools for MicroArray Data Analysis, bby Cockell, Bashton and Gillespie - 6th December 2013
+
+#bmi: "hlth", "hlth.fu", "obese", "ovwgt", "ovwtplus.fu"
+BMI.obese = topTable(fit2.bmi, coef= "obese - hlth", sort.by="p", number=Inf) #obese-healthy
+BMI.ovwgt = topTable(fit2.bmi, coef= "ovwgt - hlth", sort.by="p",  number=Inf) #overweight-healthy
+BMI.ovwgt.plus = topTable(fit2.bmi, coef= "(ovwgt + obese)/2 - hlth", sort.by="p",  number=Inf) #overweight+-healthy
+BMI.obese.x = topTable(fit2.bmi, coef= "obese - (ovwgt + hlth)/2", sort.by="p",  number=Inf) #
+
+# Summary BMI <0.01 (if required)
+> 1a
+with(BMI.obese, sum(P.Value < 0.01 & logFC > 1| P.Value < 0.01 & logFC < -1)) #=0
+with(BMI.ovwgt, sum(P.Value < 0.01  & logFC > 1| P.Value < 0.01  & logFC < -1)) #=0
+with(BMI.ovwgt.plus, sum(P.Value < 0.01  & logFC > 1| P.Value < 0.01  & logFC < -1)) #=0
+with(BMI.obese.x, sum(P.Value < 0.01  & logFC > 1| P.Value < 0.01  & logFC < -1)) #=0
+
+
+# Summary BMI <0.5 (if required)
+> 2a
+with(BMI.obese, sum(P.Value < 0.5  & logFC > 1| P.Value < 0.5  & logFC < -1)) #=0
+with(BMI.ovwgt, sum(P.Value < 0.5  & logFC > 1| P.Value < 0.5  & logFC < -1)) #=0
+with(BMI.ovwgt.plus, sum(P.Value < 0.5  & logFC > 1| P.Value < 0.5  & logFC < -1)) #=1
+with(BMI.obese.x, sum(P.Value < 0.5  & logFC > 1| P.Value < 0.5  & logFC < -1)) #=3
+
+#https://www.biostars.org/p/7478/
+
+
+#hba1c: "dbx", "norm", "norm.fu", "predbx", "predbxplus.fu"
+HBA.dbx = topTable(fit2.hba, coef= "dbx - norm", sort.by="p",  number=Inf)
+HBA.pre = topTable(fit2.hba, coef= "pre - norm", sort.by="p",  number=Inf)
+HBA.pre.dbx = topTable(fit2.hba, coef= "(dbx + pre)/2 - norm", sort.by="p",  number=Inf)
+HBA.pre.dbx.x = topTable(fit2.hba, coef= "dbx - (pre + norm)/2", sort.by="p",  number=Inf)
+
+# Summary HBA <0.01 (if required)
+> 1b
+with(HBA.dbx, sum(P.Value < 0.01 & logFC > 1| P.Value < 0.01 & logFC < -1)) #=1
+with(HBA.pre, sum(P.Value < 0.01 & logFC > 1| P.Value < 0.01 & logFC < -1)) #=0
+with(HBA.pre.dbx, sum(P.Value < 0.01 & logFC > 1| P.Value < 0.01 & logFC < -1)) #=0
+with(HBA.pre.dbx.x, sum(P.Value < 0.01 & logFC > 1| P.Value < 0.01 & logFC < -1)) #=0
+
+# Summary HBA <0.5 (if required)
+> 2b
+with(HBA.dbx, sum(P.Value < 0.5 & logFC > 1| P.Value < 0.5 & logFC < -1)) #=32 
+with(HBA.pre, sum(P.Value < 0.5 & logFC > 1| P.Value < 0.5 & logFC < -1)) #=0 
+with(HBA.pre.dbx, sum(P.Value < 0.5 & logFC > 1| P.Value < 0.5 & logFC < -1)) #=1 
+with(HBA.pre.dbx.x, sum(P.Value < 0.5 & logFC > 1| P.Value < 0.5 & logFC < -1)) #=1 
+
+#https://www.biostars.org/p/7478/
+
+
+********************DIAGNOSTICS******************************************
+#comparing unadjusted and adjusted p-values
+> template
+tiff(filename="pvalues.tif")
+plot(top.all$P.Value,top.all$adj.P.Val,main="p values vs adjusted p values")    
+abline(0,1)
+dev.off()
+
+
+plot(HBA.dbx$P.Value,HBA.dbx$adj.P.Val,main="Dbts p values vs adjusted p values: medicated")    
+abline(0,1)
+dev.off()
+
+plot(HBA.dbx.nv$P.Value,HBA.dbx.nv$adj.P.Val,main="p values vs adjusted p values: unmedicated")    
+abline(0,1)
+dev.off()
+
+#observing unadjusted p-values
+http://www.nathalievilla.org/doc/pdf/tutorial-rnaseq.pdf #see page 32 onwards
+> template
+tiff(filename="histpvalues.tif")
+hist(top.all$P.Value,main='Histogram of P-values')
+dev.off()
+
+#BMI - Baseline
+> 3a
+hist(BMI.obese$P.Value,main='Obese Histogram of P-values') # -ve slope
+hist(BMI.ovwgt$P.Value,main='Overweight Histogram of P-values') #flat
+hist(BMI.ovwgt.plus$P.Value,main='Obese/overweight Histogram of P-values') # -vely depleted
+hist(BMI.obese.x$P.Value,main='Obese v healthy+overweight Histogram of P-values') # -vely depleted
+
+#HBA - Histograms
+> 3b
+hist(HBA.dbx$P.Value,main='Dbx Histogram of P-values') #-ve slope
+hist(HBA.pre$P.Value,main='PreDbx Histogram of P-values') #-ve slope
+hist(HBA.pre.dbx$P.Value,main='Dbts+Predbx Histogram of P-values') #-ve slope
+hist(HBA.pre.dbx.x$P.Value,main='Dbts vs Predbx+Healthy Histogram of P-values') #-ve slope
+
+
+
+------------------------------------------------------------------------------
+*The comparison of adjusted and unadjusted p values (as well as failure to return any adjusted effects above threshold) justifies the selection of transcripts based on unadjusted p values 
+*Histograms are either skewed unfavourably or are flat. In conjunction with the fact that very few transcripts register any sort of effect after mulitple test correction, this suggests that there are no large effects of individual transcripts. 
+*Therefore a better strategy may be to focus on looking for subtle expression patterns (constellations of trancripts and consistency of direction)
+---------------------------------------------
+
+
+#HBA1C PLOTS
+old.par <- par(mfrow=c(1, 3))
+plot(HBA.dbx$logFC, -log10(HBA.dbx$P.Value), col=1+(abs(HBA.dbx$logFC) >1 & HBA.dbx$P.Value < 0.01), main="diabetes-normal")
+plot(HBA.pre$logFC, -log10(HBA.pre$P.Value), col=1+(abs(HBA.pre$logFC) >1 & HBA.pre$P.Value < 0.01), main="Prediabetes-healthy")
+plot(HBA.pre.dbx$logFC, -log10(HBA.pre.dbx $P.Value), col=1+(abs(HBA.pre.dbx$logFC) >1 & HBA.pre.dbx$P.Value < 0.01), main="diabetes vs Prediabetes")
+plot(HBA.pre.dbx.x$logFC, -log10(HBA.pre.dbx.x $P.Value), col=1+(abs(HBA.pre.dbx.x$logFC) >1 & HBA.pre.dbx.x$P.Value < 0.01), main="diabetes vs Prediabetes+Healthy")
+par(old.par) #reset par
+
+#BMI PLOTS
+old.par <- par(mfrow=c(1, 3))
+plot(BMI.obese$logFC, -log10(BMI.obese$P.Value), col=1+(abs(BMI.obese$logFC) > 1 & BMI.obese$P.Value < 0.01), main="obese-healthy")
+plot(BMI.ovwgt$logFC, -log10(BMI.ovwgt$P.Value), col=1+(abs(BMI.ovwgt$logFC) >1 & BMI.ovwgt$P.Value <0.01), main="overweight-healthy")
+plot(BMI.ovwgt.plus$logFC, -log10(BMI.ovwgt$P.Value), col=1+(abs(BMI.ovwgt$logFC) >1 & BMI.ovwgt$P.Value <0.01), main="overweight-healthy")
+plot(BMI.obese.x$logFC, -log10(BMI.ovwgt$P.Value), col=1+(abs(BMI.ovwgt$logFC) >1 & BMI.ovwgt$P.Value <0.01), main="overweight-healthy")
+par(old.par) #reset par
+
+#TO DO: 
+w/wo meds Y
+explore overlap with chronics
+Investogate SV vs time and sv vs outcome Y
+drug naive cases Y
+pre SV, PC and medication Y
+de-anonymise trabscripts Y
+explore overlap for same subject at different timepoint
+explore overlap with chronics
+
+#Which genes are actually differentially expressed for each comparison: DECIDETESTS 
+results.bmi = decideTests(fit2.bmi, adjust.method="none", p.value=0.01)
+results.hba = decideTests(fit2.hba, adjust.method="none", p.value=0.01)
+#A numeric matrix with elements -1, 0 or 1 depending on whether each t-statistic is classified as significantly negative, not significant or significantly positive respectively.
+#The function decideTests generates a matrix of 0s and 1s, where 0 indicates no DE for that specific probeset and comparison, and 1 means DE (by default at the 0.05 significance level, #but that can be changed, see ?decideTests:
+
+#Substitute -1 values in matrix for 1 (necessary before running upset)
+____________________________
+#http://stackoverflow.com/questions/9439619/using-r-replace-all-values-in-a-matrix-0-1-with-0
+mat[mat < 0.1] <- NA
+exampl[exampl ==-1]<-1
+--------------------
+--------------------
+
+
+# VENN DIAGRAMS (if needed)
+vennDiagram(results.bmi[, c("obese - hlth", "(ovwgt + obese)/2 - hlth", "obese - (ovwgt + hlth)/2")]) 
+vennDiagram(results.hba[, c("dbx - norm", "(dbx + pre)/2 - norm", "dbx - (pre + norm)/2")])#HBA
+> transcripts represented here will mostly have p<o.o1 but log2 fold change <1. As a fold change threshold, like say 1.5-2x is equivalent to +/-1 on the log2 scale, means absolute fold change just greater than 1
+
+#Heatmap
+__________
+-----
+#Create lists
+BMI.list <- list(obese=BMI.obese, ovrwgt = BMI.ovwgt, ovrwtpls = BMI.ovwgt.plus, BMI.obese.x = BMI.obese.x)#doing this way names the dataframes as they are added to the list
+str(BMI.list)
+names(BMI.list)
+
+HBA.list <- list(HBA.dbx=HBA.dbx, HBA.pre = HBA.pre, HBA.pre.dbx = HBA.pre.dbx, HBA.pre.dbx.x = HBA.pre.dbx.x)#doing this way names the dataframes as they are added to the list
+str(HBA.list)
+names(HBA.list)
+------
+
+#How many top genes to extract for heatmap?
+> 4a
+BMI:
+lapply(BMI.list, function(x) sum(x$P.Value <0.01)) # suggests that up to 25 seems an ok fit
+
+> 4b
+HBA:
+lapply(HBA.list, function(x) sum(x$P.Value <0.01)) #300 would fit less well here
+
+#This decision will be based on the average depth of results over the threshold for each condition (n's come from .descrip objects):
+obesity n=13 (n=12 baseline) 
+healthy n=43
+overweight n=36
+
+Dbx n=5 (n=4 baseline)
+prediabetes n=4
+healthy n=83
+
+
+#topTable output defined
+AveExpr: average log2-expression for the probe over all arrays and channels, same as Amean in the MarrayLM object
+logFC: estimate of the log2-fold-change corresponding to the effect or contrast (for topTableF there may be several columns of log-fold-changes
+log-odds that the gene is differentially expressed (omitted for topTreat)
+A fold change threshold, like say 1.5-2x is equivalent to +/-1 on the log2 scale:
+#https://www.researchgate.net/post/Can_anyone_suggest_the_easiest_way_to_statistically_analyze_differential_expression_using_just_one_array_for_control_and_test
+
+#BASELINE-BASELINE
+_______________________________________________________________
+#Extraction of top ten genes per BMI contrast by logFC)
+BMI_signames.fc = unique(c(rownames(BMI.obese[1:25,]), #stack top x rows for each contrast from  toptable output
+                      rownames(BMI.ovwgt[1:25,]),
+                      rownames(BMI.ovwgt.plus[1:25,]),
+                      rownames(BMI.obese.x[1:25,])))
+BMI.full.fc = data.frame(BMI.obese[BMI_signames.fc,]$logFC,#append respective logFC info
+                  BMI.ovwgt[BMI_signames.fc,]$logFC,
+                  BMI.ovwgt.plus[BMI_signames.fc,]$logFC,
+                  BMI.obese.x[BMI_signames.fc,]$logFC,
+                  row.names = BMI_signames.fc)
+colnames(BMI.full.fc) <-c("obese", "ovwgt", "ovwgt.plus", "obese.x")
+
+#get gene symbols
+BMI.full.fc<-cbind(x=rownames(BMI.full.fc), BMI.full.fc)
+gene_symbols.bmi<-cbind(x=rownames(gene_symbols), gene_symbols)
+BMI.full.fc[["x"]] <- gene_symbols.bmi[match(BMI.full.fc[["x"]], gene_symbols.bmi[["x"]] ) , 'SYMBOL']
+rownames(BMI.full.fc) = make.names(BMI.full.fc[,1], unique = TRUE) # make.names allows rownames to have duplicate values (represented as a decimal):https://www.biostars.org/p/62988/
+#count dup genes in BMI.full.fc$x (the next step will alter their names)!!!!!!!!!! count(BMI.full.fc$x)
+BMI.full.fc[,1] <- NULL
+
+
+# Extraction of top ten genes per HBA contrast by logFC)
+HBA_signames.fc = unique(c(rownames(HBA.dbx[1:30,]), #stack toptable top ten rows for each contrast
+                      rownames(HBA.pre[1:30,]),
+                        rownames(HBA.pre.dbx[1:30,]),
+                        rownames(HBA.pre.dbx.x[1:30,])))
+
+HBA.full.fc = data.frame(HBA.dbx[HBA_signames.fc,]$logFC, 
+                  HBA.pre[HBA_signames.fc,]$logFC,
+                  HBA.pre.dbx[HBA_signames.fc,]$logFC,
+                  HBA.pre.dbx.x[HBA_signames.fc,]$logFC,
+                  row.names = HBA_signames.fc)
+colnames(HBA.full.fc) <-c("Dbx", "Pre", "Pre.dbx", "pre.dbx.x")
+
+
+
+#get gene symbols
+HBA.full.fc<-cbind(x=rownames(HBA.full.fc), HBA.full.fc)
+gene_symbols.hba<-cbind(x=rownames(gene_symbols), gene_symbols)
+HBA.full.fc[["x"]] <- gene_symbols.hba[match(HBA.full.fc[["x"]], gene_symbols.hba[["x"]] ) , 'SYMBOL']
+rownames(HBA.full.fc) = make.names(HBA.full.fc[,1], unique = TRUE) # make.names allows rownames to have duplicate values (represented as a decimal):https://www.biostars.org/p/62988/
+#count dup genes in BMI.full.fc$x (the next step will alter their names)!!!!!!count(HBA.full.fc$x)
+HBA.full.fc[,1] <- NULL
+
+
+
+HEATMAPS
+_______________
+------------------------------
+install.packages("gplots")
+library("gplots")
+
+#heatmap defaults
+x11();test.bmi <- heatmap.2(as.matrix(BMI.full.fc), scale="none", margins = c(10, 10)) #BMI
+x11();test.hba <- heatmap.2(as.matrix(HBA.full.fc), scale="none", margins = c(14, 14)) #HBA
+
+# BMI clustering by correlation distance
+hc<-as.dendrogram(hclust(dist(1-cor(BMI.full.fc, method= "pearson")))) #trasposed because 'cor' only works on columns
+hr<-as.dendrogram(hclust(dist(1-cor(t(BMI.full.fc), method= "pearson"))))
+> 5a
+x11();test.BMI <- heatmap.2(as.matrix(BMI.full.fc), scale="none", Rowv=hr, Colv=hc, margins = c(14, 14))
+
+#HBA  clustering by correlation distance
+hc<-as.dendrogram(hclust(dist(1-cor(HBA.full.fc, method= "pearson")))) #Apply clustering to HBA by correlation (Pearson seems better fit)
+hr<-as.dendrogram(hclust(dist(1-cor(t(HBA.full.fc), method= "pearson"))))
+> 5b
+x11();test.hba <- heatmap.2(as.matrix(HBA.full.fc), scale="none", Rowv=hr, Colv=hc, margins = c(14, 14))
+
+
+> conclusion: Trancritpmoic profile of metabolic disturbance is nuanced (small effects with no outright significance). Pre and dbx are basically different until you start combining them as is done here: The basic dbx profile is weakened a small degree by being merged with pre and compared against normals (pre.dbx). Signal is made slightly stronger by adding pre to normals group (pre.dbx.x)
+
+
+#Thoughts:
+#scale=none -> empirically important across the matrix. 
+#when scale= column  -> empirically important within column.
+#For HBA scale=none vs scale=column are almost the same, with not much happening. Scaling by column tells you more about what is going on at gene level.
+#- Is like the difference between comparing system-level and gene-level effects; big gene-level movements hardly make a ripple at system level, as evidenced by the failure to find genome-wide significant effects (scaled globally or scaled to each gene)
+
+#To do:
+_____
+#Increase number of top genes per contrast:20 -> 50 -> 100
+#lose redundant SVs
+#attempt to subtract medication-related trancripts for BMI only?
+
+#Download UpsetR: https://github.com/hms-dbmi/UpSetR
+install.packages("UpSetR")
+library(UpSetR)
+
+#bmi
+upset.bmi<-data.frame(results.bmi[,1:4]) #results.bmi (above, earlier) indicates Which genes are actually differentially expressed for each comparison - from DECIDETESTS 
+colnames(upset.bmi) <-c("obese", "ovwgt", "ovwgt.plus", "obese.x")
+upset.bmi<-cbind(genes = rownames(upset.bmi), upset.bmi) #rowname col is factor
+upset.bmi[upset.bmi ==-1]<-1
+> 6a
+x11();upset(upset.bmi)
+
+#hba
+upset.hba<-data.frame(results.hba[,1:4])
+colnames(upset.hba) <-c("Dbx", "Pre", "Pre.dbx", "pre.dbx.x")
+upset.hba<-cbind(genes = rownames(upset.hba), upset.hba) #rowname col is factor
+upset.hba[upset.hba ==-1]<-1
+> 6b
+x11();upset(upset.hba)
+
+> Adding prediabetics to the healthy group is a better fit than adding to the diabetic group. This is because this way round the transcrptomic difference between groups is maximised, as maeasured by the total overlap count, (which hits a maximimum) and the total yield of hits passing P<0.001 for this comparison (n=56), which is also greater than dbx alone (n=54). However this is all overshadowed by fact that these results occur in the context of failure to find enrichment of significant p values
+
+#create summaries
+___________________
+
+#BMI
+dim(results.bmi)
+bmi.summary<-data.frame(results.bmi)
+bmi.summary$neg<-rowSums(bmi.summary[1:4]<0)
+bmi.summary$pos<-rowSums(bmi.summary[1:4]>0)
+bmi.summary$tot <-rowSums(bmi.summary[1:4]>0 | bmi.summary[1:4]<0) #How many up? How many down? how many overlaps (ie tot>1)? how often are overlaps directionally concordant?
+#length(which(bmi.summary$tot >0)) # use this to check what length should be
+> 7a
+bmi.summary<-subset(bmi.summary, !bmi.summary[ , 7] < 1) # col7 = tot. Checks that the 'tot' column is non null (ie, removes rows where total is null). Check observed rows = expected rows
+colnames(bmi.summary)[1:4] <-c("obese", "ovwgt", "ovwgt.plus", "obese.x")
+
+#HBA
+dim(results.hba) #4745, 4
+hba.summary<-data.frame(results.hba)
+hba.summary$neg<-rowSums(hba.summary[1:4]<0)
+hba.summary$pos<-rowSums(hba.summary[1:4]>0)
+hba.summary$tot <-rowSums(hba.summary[1:4]>0|hba.summary[1:4]<0)
+#length(which(hba.summary$tot >0)) # use this to check what length should be
+> 7b
+hba.summary<-subset(hba.summary, !hba.summary[ , 7] < 1) # col7 = total. Checks that the 'tot' column is non null (ie, removes rows where total is null). Check observed rows = expected rows
+colnames(hba.summary)[1:4] <-c("Dbx", "Pre", "Pre.dbx", "pre.dbx.x")
+
+----------------------------------------------------------------------------------------------------------
+#How many up? How many down? how many overlaps (ie tot>1)? how often are overlaps directionally concordant?
+#How many with Fold-change >1?
+
+----------------------------------------------------------------------------------------------------------
+
+#Add gene symbols to the summary
+bmi.summary<-cbind(x=rownames(bmi.summary), bmi.summary)
+bmi.summary[["x"]] <- gene_symbols.bmi[match(bmi.summary[["x"]], gene_symbols.bmi[["x"]] ) , 'SYMBOL']
+
+hba.summary<-cbind(x=rownames(hba.summary), hba.summary)
+hba.summary[["x"]] <- gene_symbols.hba[match(hba.summary[["x"]], gene_symbols.hba[["x"]] ) , 'SYMBOL']
+
+#Intersection of same transcript - a metric allowing comparative assessment of model quality
+#BMI
+bmi.summary$intersections<-(bmi.summary$tot -1)
+> 8a
+sum(bmi.summary$intersections) # total intersections of same transcript across- diff conditions #29
+sum(bmi.summary$intersections > 1) #5
+
+#HBA
+hba.summary$intersections<-(hba.summary$tot -1)
+> 8b
+sum(hba.summary$intersections) # total intersections #51
+sum(hba.summary$intersections >1) #2
+
+#NB. To query the intersections of a specific contrast simply sort summary by that contrast
+
+#Intersection of same genes across (all) contrasts
+______________________________________
+
+#BMI
+n_occur.bmi <- data.frame(table(bmi.summary$x)) 
+> 9a
+n_occur.bmi2 <-n_occur.bmi[n_occur.bmi$Freq > 1,]
+
+#HBA
+n_occur.hba <- data.frame(table(hba.summary$x)) 
+> 9b
+n_occur.hba2<-n_occur.hba[n_occur.hba$Freq > 1,] #which genes occured more than once?
+
+
+#Check overlap status of multiply-associated genes between BMI and HBA
+_________________________________________________________
+
+intersect.hba.bmi <- intersect(n_occur.hba2$Var1, n_occur.bmi$Var1)
+> 10a
+> bmi.summary[bmi.summary$x %in% intersect.hba.bmi,]
+
+> 10b
+> hba.summary[hba.summary$x %in% intersect.hba.bmi,]
+
+-- Check that a and b give same result
+
+
+#Check overlap status of any associated gene (weak fold change criteria, p<0.01) - useful for different conditions and/or different runs (eg comparing runs using diff nums of SVs)
+____________________________________________________
+
+> 11
+
+bmi.summary[bmi.summary$x %in% hba.summary$x,]
+hba.summary[hba.summary$x %in% bmi.summary$x,] 
+-- Check that a and b give same result
+# must correct for fact that chances of overlap increases with list lengths
+
+---------------------------
+*2 separate transcripts thrown up for each gene identified (except CTSC; bmi & GAPT; hba) - Are all the transcripts belonging to each gene highlighted as differentially expressed? 
+*APOBEC3G: Consistent effect direction. Sig decreases in "metabolic normals" betw baseline and FU (HBA and BMI) - Medication-related or persistent in drug naive baseliners?
+*CTSC: Consistent effect direction. sig decrease in diabetes (vs normal and vs drug naive)
+*GAPT: Consistent effect direction (up).Consistent in sense that expression diffs in diabetes and obesity is only apparent comparing to drug naive, so may not be drug-associated.
+*GNLY: Consistent effect direction. lower expression in prediabetes (medicated and unmedicated) and in the BMI normals over time -persist with drug naive baseliners?
+*no follow-up effects seen in metabolic cases. Perhaps because these are follow-ups who dont have a baseline reference - will be informative to analyse subjects with baseline & FU data
+*iYywPNTnrF7gLCV6jU: consistent effects. Higher expression assoc with >=prediabetes betw baseline and follow-up and within FU timepoint.
+
+WHICH OF THE ABOVE SHOWS FOLD CHANGE >1?
+-------------------------------
+ 
+ 
+#Get gene info
+______________________
+#BMI
+bmi.geneInfo <- data.frame(x=rownames(bmi.summary), gene=bmi.summary$x)
+bmi.geneInfo <-merge(bmi.geneInfo, gene_symbols.bmi[, c("x", "REFSEQ_ID", "ENTREZ_GENE_ID", "DEFINITION", "PROTEIN_PRODUCT")], by="x", all.x=TRUE) #Add in the all.x=TRUE argument in order to keep all of the pids in table1 that don't have matches in table2.
+
+#HBA
+hba.geneInfo <- data.frame(x=rownames(hba.summary), gene=hba.summary$x)
+hba.geneInfo <-merge(hba.geneInfo, gene_symbols.hba[, c("x", "REFSEQ_ID", "ENTREZ_GENE_ID", "DEFINITION", "PROTEIN_PRODUCT")], by="x", all.x=TRUE) #Add in the all.x=TRUE argument in order to keep all of the pids in table1 that don't have matches in table2.
+
+#Shortlisted gene info: bmi.geneInfo[bmi.geneInfo$gene %in% intersect.hba.bmi,] #gene info for the overlapping genes shortlist. Obviously will not work if n intersections is null
+______________________
+
+
+
+#Pull out individual gene profiles out of summary
+______________________________________________
+
+querygene.bmi <- bmi.summary[bmi.summary$x == "APOBEC3G", ]
+querygene.hba <- hba.summary[hba.summary$x == "APOBEC3G", ]
+
+
+#For descriptives by condition open:
+_________________________________
+BMI.descrip
+hba1c.descrip
+
+
+#Query individual genes/trasncripts across contrasts
+_______________________________________________________
+> genes/transcripts
+Hkie59ehuPV.6Ceheg	APOBEC3G
+6TTnqoj3SEdjo1FRPQ	APOBEC3G
+uEReUHkXN_F56kXq30	CTSC
+01kigeOLuQ_IkyS6SU  CTSC
+9l33dCXn0jTC99RE3U	GAPT
+QenSDz7TKdcHvXXn3I	GAPT
+NcStV3iV3Rfte6CCRI	GNLY
+KVMASruApN0mnlUU6c	GNLY
+
+
+
+#1.translate geneID -> transcriptID
+gene_symbols[gene_symbols$TargetID=="APOBEC3G", "nuID"] 
+#2.using transcript ID Interrogate same info across multiple contrasts (in form of a list)
+
+#Create queriable LISTS
+#http://stackoverflow.com/questions/9002227/how-to-get-the-name-of-a-data-frame-within-a-list
+
+#-BMI-
+-----
+BMI.list <- list(obese=BMI.obese, ovrwgt = BMI.ovwgt, ovrwtpls = BMI.ovwgt.plus, BMI.obese.x = BMI.obese.x)#doing this way names the dataframes as they are added to the list
+str(BMI.list)
+names(BMI.list)
+-----
+list.extract.bmi <-lapply(BMI.list, function(x) subset(x, rownames(x) == "6TTnqoj3SEdjo1FRPQ", select = c(logFC, AveExpr, t, P.Value))) #extract data from list. use sapply forquickview
+FRPQ<-rbindlist(list.extract.bmi)#Consolidation into 1 dataframe 
+rownames(FRPQ)<- c("obese", "ovwgt", "ovwgt.plus", "obese.x")
+
+#-HBA-
+------
+HBA.list <- list(HBA.dbx=HBA.dbx, HBA.pre = HBA.pre, HBA.pre.dbx = HBA.pre.dbx, HBA.pre.dbx.x = HBA.pre.dbx.x)#doing this way names the dataframes as they are added to the list
+str(HBA.list)
+names(HBA.list)
+------
+list.extract.hba <-lapply(HBA.list, function(x) subset(x, rownames(x) == "Kn2jl9iLrmGX37jnd4", select = c(logFC, AveExpr, t, P.Value))) #extract data from list. use sapply forquickview
+jnd4<-rbindlist(list.extract.bmi)#Consolidation into 1 dataframe 
+rownames(jnd4)<-c("Dbx", "Pre", "Pre.dbx", "pre.dbx.x")
+#(see solution 3): https://www.r-bloggers.com/concatenating-a-list-of-data-frames/
+#http://stackoverflow.com/questions/22002838/same-function-over-multiple-data-frames-in-r
+
+______
+QCplots: http://bioinformatics.risha.me/r/ Y
+For individual candidates:
+  -Avergae expression 
+  -logfold change
+  -p value
+Look at the above AROSS FEP and CHRONICS -> perform meta-analysis
+Eventually include meta-analysis across FEP and chronics - see whether genome-wide effects can be discovered. These would not be suitable for predictive modelling (or maybe could do this on selected candidates that perform well in the prediction aspect)
+
+
+------------------------------------------------------------------ 
+#naive list
+list<-c(118, 133, 227, 237, 241, 247, 249, 250, 263, 265, 287, 307, 319, 320, 384, 403, 415, 434, 491, 499, 512, 531, 583, 591, 607, 621, 623, 624, 638, 660, 664, 671, 683, 698, 718) #all drug naive cases
+
+#naive -start
+naive.svmod0 = model.matrix(~ 0 + FolderID + Age.norm + gender + PC1 + PC2, data=pheno.mini) #the following analysis does not tolerate inclusion of ChipID_1, ChipID_2 and Timepoint
+
+naive.svmod.bmi.catg = model.matrix(~ 0 + FolderID + BMI.catg + Age.norm + gender + PC1 + PC2, data=pheno.mini)
+colnames(naive.svmod.bmi.catg)[2:4] <- c("hlth", "ovwgt", "obese")
+
+naive.svmod.hba1c.catg = model.matrix(~ 0 + FolderID + hba1c.catg + Age.norm + gender + PC1 + PC2, data=pheno.mini)#additionally this model does not tolerate "pre" as it has zero counts
+colnames(naive.svmod.hba1c.catg)[2:4] <- c("norm", "pre", "dbx")
+
+#naive-bmi
+naive.svmod.bmi.catg<-data.frame(naive.svmod.bmi.catg)
+naive.svmod.bmi.catg<-naive.svmod.bmi.catg[naive.svmod.bmi.catg$obese== 1 | naive.svmod.bmi.catg$FolderID %in% list,]  #count: 13 obese, 10 non-obese drug naive cases
+naive.ALL.bmi<-gx.postjoin.1[gx.postjoin.1$FolderID %in% naive.svmod.bmi.catg$FolderID,]
+head(data.frame(colnames(naive.ALL.bmi)), 54)#GX starts at col48
+naive.ALL.bmi[,48:length(naive.ALL.bmi)] = apply(naive.ALL.bmi[,48:length(naive.ALL.bmi)], 2, function(x) as.numeric(as.character(x))) 
+#excision expression data
+naive.GX.bmi<-t(naive.ALL.bmi[-c(1:47)]) #transpose
+colnames(naive.GX.bmi)<-naive.ALL.bmi[,2]#re-attachment of colnames #!!!check for consistency
+#excision of phenos
+
+naive.svmod.bmi.catg$FolderID<-NULL #remove FolderIDs
+naive.svmod.bmi.catg<-as.matrix(naive.svmod.bmi.catg) 
+
+# SV calculation FAILURE for naive obs..(therefore either go with pre-existing, or proceed without)
+naive.bmi.numsv = num.sv(naive.GX.bmi, naive.svmod.bmi.catg, method="be") 
+naive.svobj.bmi.catg = sva(naive.GX.bmi,naive.svmod.bmi.catg,svmod0,n.sv=naive.bmi.numsv)#calculates and counts surrogate vars #generate svs 
+
+
+#naive-hba
+naive.svmod.hba1c.catg<-data.frame(naive.svmod.hba1c.catg)
+naive.svmod.hba1c.catg<-naive.svmod.hba1c.catg[naive.svmod.hba1c.catg$dbx==1 | naive.svmod.hba1c.catg$FolderID %in% list,]  #count: 5 dbx, 10 non-dbx drug naive cases
+naive.ALL.hba1c<-gx.postjoin.1[gx.postjoin.1$FolderID %in% naive.svmod.hba1c.catg$FolderID,]
+head(data.frame(colnames(naive.ALL.hba1c)), 54)#GX starts at col48
+naive.ALL.hba1c[,48:length(naive.ALL.hba1c)] = apply(naive.ALL.hba1c[,48:length(naive.ALL.hba1c)], 2, function(x) as.numeric(as.character(x))) 
+#excision expression data
+naive.GX.hba1c<-t(naive.ALL.hba1c[-c(1:47)]) #transpose
+
+naive.svmod.hba1c.catg$FolderID<-NULL #remove FolderIDs
+naive.svmod.hba1c.catg$pre<-NULL #additionally this model does not tolerate "pre" which has zero counts
+naive.svmod.hba1c.catg<-as.matrix(naive.svmod.hba1c.catg)
+
+# SV calculation FAILURE for naive obs..(therefore either go with pre-existing SVs, or proceed without)
+naive.hba1c.numsv = num.sv(naive.GX.hba1c, naive.svmod.hba1c.catg, method="be") #FAIL
+naive.svobj.hba1c.catg = sva(naive.GX.hba1c,naive.svmod.hba1c.catg,svmod0,n.sv=naive.hba1c.numsv)#calculates and counts surrogate vars #generate svs
+
+#lmfit
+naive.fit1.bmi=lmFit(naive.GX.bmi, naive.svmod.bmi.catg)
+naive.fit1.hba1c=lmFit(naive.GX.hba1c, naive.svmod.hba1c.catg)
+
+#view factor levels prior to contrast matrix
+colnames(naive.fit1.bmi)
+colnames(naive.fit1.hba1c)
+
+#Create contrast matix
+naive.contrast.matx.bmi <- makeContrasts (obese-hlth, ovwgt-hlth, (ovwgt + obese)/2 - hlth, obese - (ovwgt + hlth)/2, levels = naive.svmod.bmi.catg) 
+#(overweight + obese)/2 - overweightplus.fu, is equivalent to >ovweight at baseline vs overweight at follow-up
+naive.contrast.matx.hba <- makeContrasts (dbx - norm, levels = naive.svmod.hba1c.catg)
+
+naive.fit2.bmi=contrasts.fit(naive.fit1.bmi, naive.contrast.matx.bmi)
+naive.fit2.hba=contrasts.fit(naive.fit1.hba1c, naive.contrast.matx.hba)
+
+naive.fit2.bmi<-eBayes(naive.fit2.bmi) ###use eBayes() to moderate the estimated error variances
+naive.fit2.hba<-eBayes(naive.fit2.hba)
+
+#Extract all differentially-expressed genes, with associated p-value and fold-change for a particular contrast: TOPTABLE
+#much of this taken from downloaded pdf handout entitled:
+Bioconductor Tools for MicroArray Data Analysis, bby Cockell, Bashton and Gillespie - 6th December 2013
+
+#bmi: "hlth", "hlth.fu", "obese", "ovwgt", "ovwtplus.fu"
+naive.BMI.obese = topTable(naive.fit2.bmi, coef= "obese - hlth", sort.by="p", number=Inf) #obese-healthy
+naive.BMI.ovwgt = topTable(naive.fit2.bmi, coef= "ovwgt - hlth", sort.by="p",  number=Inf) #overweight-healthy
+naive.BMI.ovwgt.plus = topTable(naive.fit2.bmi, coef= "(ovwgt + obese)/2 - hlth", sort.by="p",  number=Inf) #overweight+-healthy
+naive.BMI.obese.x = topTable(naive.fit2.bmi, coef= "obese - (ovwgt + hlth)/2", sort.by="p",  number=Inf) #
+
+# Summary BMI <0.01 (if required)
+> 1a
+with(naive.BMI.obese, sum(P.Value < 0.01 & logFC > 1| P.Value < 0.01 & logFC < -1)) #=0
+with(naive.BMI.ovwgt, sum(P.Value < 0.01  & logFC > 1| P.Value < 0.01  & logFC < -1)) #=0
+with(naive.BMI.ovwgt.plus, sum(P.Value < 0.01  & logFC > 1| P.Value < 0.01  & logFC < -1)) #=0
+with(naive.BMI.obese.x, sum(P.Value < 0.01  & logFC > 1| P.Value < 0.01  & logFC < -1)) #=0
+
+
+# Summary BMI <0.5 (if required)
+> 2a
+with(naive.BMI.obese, sum(P.Value < 0.5  & logFC > 1| P.Value < 0.5  & logFC < -1)) #=0
+with(naive.BMI.ovwgt, sum(P.Value < 0.5  & logFC > 1| P.Value < 0.5  & logFC < -1)) #=0
+with(naive.BMI.ovwgt.plus, sum(P.Value < 0.5  & logFC > 1| P.Value < 0.5  & logFC < -1)) #=1
+with(naive.BMI.obese.x, sum(P.Value < 0.5  & logFC > 1| P.Value < 0.5  & logFC < -1)) #=3
+
+#https://www.biostars.org/p/7478/
+
+
+#hba1c: "dbx", "norm", "norm.fu", "predbx", "predbxplus.fu"
+naive.HBA.dbx = topTable(naive.fit2.hba, coef= "dbx - norm", sort.by="p",  number=Inf)
+
+
+# Summary HBA <0.01 (if required)
+> 1b
+with(naive.HBA.dbx, sum(P.Value < 0.01 & logFC > 1| P.Value < 0.01 & logFC < -1)) #=1
+
+
+# Summary HBA <0.5 (if required)
+> 2b
+with(HBA.dbx, sum(P.Value < 0.5 & logFC > 1| P.Value < 0.5 & logFC < -1)) #=32 
+
+#https://www.biostars.org/p/7478/
+
+
+********************DIAGNOSTICS******************************************
+#comparing unadjusted and adjusted p-values
+> template
+tiff(filename="pvalues.tif")
+plot(top.all$P.Value,top.all$adj.P.Val,main="p values vs adjusted p values")    
+abline(0,1)
+dev.off()
+
+
+plot(HBA.dbx$P.Value,HBA.dbx$adj.P.Val,main="Dbts p values vs adjusted p values: medicated")    
+abline(0,1)
+dev.off()
+
+plot(HBA.dbx.nv$P.Value,HBA.dbx.nv$adj.P.Val,main="p values vs adjusted p values: unmedicated")    
+abline(0,1)
+dev.off()
+
+#observing unadjusted p-values
+http://www.nathalievilla.org/doc/pdf/tutorial-rnaseq.pdf #see page 32 onwards
+> template
+tiff(filename="histpvalues.tif")
+hist(top.all$P.Value,main='Histogram of P-values')
+dev.off()
+
+#BMI - Baseline
+> 3a
+hist(naive.BMI.obese$P.Value,main='Naive Obese Histogram of P-values') # -ve slope
+hist(naive.BMI.ovwgt$P.Value,main='Overweight Histogram of P-values') #flat
+hist(naive.BMI.ovwgt.plus$P.Value,main='Obese/overweight Histogram of P-values') # -vely depleted
+hist(naive.BMI.obese.x$P.Value,main='Obese v healthy+overweight Histogram of P-values') # -vely depleted
+
+#HBA - Histograms
+> 3b
+hist(naive.HBA.dbx$P.Value,main='Dbx Histogram of P-values') #-ve slope
+
+
+------------------------------------------------------------------------------
+*The comparison of adjusted and unadjusted p values (as well as failure to return any adjusted effects above threshold) justifies the selection of transcripts based on unadjusted p values 
+*Histograms are either skewed unfavourably or are flat. In conjunction with the fact that very few transcripts register any sort of effect after mulitple test correction, this suggests that there are no large effects of individual transcripts. 
+*Therefore a better strategy may be to focus on looking for subtle expression patterns (constellations of trancripts and consistency of direction)
+---------------------------------------------
+
+
+#HBA1C PLOTS
+old.par <- par(mfrow=c(1, 3))
+plot(naive.HBA.dbx$logFC, -log10(naive.HBA.dbx$P.Value), col=1+(abs(naive.HBA.dbx$logFC) >1 & naive.HBA.dbx$P.Value < 0.01), main="diabetes vs non-diabetes drug naives")
+
+par(old.par) #reset par
+
+#BMI PLOTS
+old.par <- par(mfrow=c(1, 3))
+plot(naive.BMI.obese$logFC, -log10(BMI.obese$P.Value), col=1+(abs(BMI.obese$logFC) > 1 & BMI.obese$P.Value < 0.01), main="obese-healthy")
+plot(naive.BMI.ovwgt$logFC, -log10(BMI.ovwgt$P.Value), col=1+(abs(BMI.ovwgt$logFC) >1 & BMI.ovwgt$P.Value <0.01), main="overweight-healthy")
+plot(naive.BMI.ovwgt.plus$logFC, -log10(BMI.ovwgt$P.Value), col=1+(abs(BMI.ovwgt$logFC) >1 & BMI.ovwgt$P.Value <0.01), main="overweight-healthy")
+plot(naive.BMI.obese.x$logFC, -log10(BMI.ovwgt$P.Value), col=1+(abs(BMI.ovwgt$logFC) >1 & BMI.ovwgt$P.Value <0.01), main="overweight-healthy")
+par(old.par) #reset par
+
+#TO DO: 
+w/wo meds Y
+explore overlap with chronics
+Investogate SV vs time and sv vs outcome Y
+drug naive cases Y
+pre SV, PC and medication Y
+de-anonymise trabscripts Y
+explore overlap for same subject at different timepoint
+explore overlap with chronics
+
+#Which genes are actually differentially expressed for each comparison: DECIDETESTS 
+results.bmi = decideTests(fit2.bmi, adjust.method="none", p.value=0.01)
+results.hba = decideTests(fit2.hba, adjust.method="none", p.value=0.01)
+#A numeric matrix with elements -1, 0 or 1 depending on whether each t-statistic is classified as significantly negative, not significant or significantly positive respectively.
+#The function decideTests generates a matrix of 0s and 1s, where 0 indicates no DE for that specific probeset and comparison, and 1 means DE (by default at the 0.05 significance level, #but that can be changed, see ?decideTests:
+
+#Substitute -1 values in matrix for 1 (necessary before running upset)
+____________________________
+#http://stackoverflow.com/questions/9439619/using-r-replace-all-values-in-a-matrix-0-1-with-0
+mat[mat < 0.1] <- NA
+exampl[exampl ==-1]<-1
+--------------------
+--------------------
+
+
+# VENN DIAGRAMS (if needed)
+vennDiagram(results.bmi[, c("obese - hlth", "(ovwgt + obese)/2 - hlth", "obese - (ovwgt + hlth)/2")]) 
+vennDiagram(results.hba[, c("dbx - norm", "(dbx + pre)/2 - norm", "dbx - (pre + norm)/2")])#HBA
+> transcripts represented here will mostly have p<o.o1 but log2 fold change <1. As a fold change threshold, like say 1.5-2x is equivalent to +/-1 on the log2 scale, means absolute fold change just greater than 1
+
+#Heatmap
+__________
+-----
+#Create lists
+BMI.list <- list(obese=BMI.obese, ovrwgt = BMI.ovwgt, ovrwtpls = BMI.ovwgt.plus, BMI.obese.x = BMI.obese.x)#doing this way names the dataframes as they are added to the list
+str(BMI.list)
+names(BMI.list)
+
+HBA.list <- list(HBA.dbx=HBA.dbx, HBA.pre = HBA.pre, HBA.pre.dbx = HBA.pre.dbx, HBA.pre.dbx.x = HBA.pre.dbx.x)#doing this way names the dataframes as they are added to the list
+str(HBA.list)
+names(HBA.list)
+------
+
+#How many top genes to extract for heatmap?
+> 4a
+BMI:
+lapply(BMI.list, function(x) sum(x$P.Value <0.01)) # suggests that up to 25 seems an ok fit
+
+> 4b
+HBA:
+lapply(HBA.list, function(x) sum(x$P.Value <0.01)) #300 would fit less well here
+
+#This decision will be based on the average depth of results over the threshold for each condition (n's come from .descrip objects):
+obesity n=13 (n=12 baseline) 
+healthy n=43
+overweight n=36
+
+Dbx n=5 (n=4 baseline)
+prediabetes n=4
+healthy n=83
+
+
+#topTable output defined
+AveExpr: average log2-expression for the probe over all arrays and channels, same as Amean in the MarrayLM object
+logFC: estimate of the log2-fold-change corresponding to the effect or contrast (for topTableF there may be several columns of log-fold-changes
+log-odds that the gene is differentially expressed (omitted for topTreat)
+A fold change threshold, like say 1.5-2x is equivalent to +/-1 on the log2 scale:
+#https://www.researchgate.net/post/Can_anyone_suggest_the_easiest_way_to_statistically_analyze_differential_expression_using_just_one_array_for_control_and_test
+
+#BASELINE-BASELINE
+_______________________________________________________________
+#Extraction of top ten genes per BMI contrast by logFC)
+BMI_signames.fc = unique(c(rownames(BMI.obese[1:25,]), #stack top x rows for each contrast from  toptable output
+                      rownames(BMI.ovwgt[1:25,]),
+                      rownames(BMI.ovwgt.plus[1:25,]),
+                      rownames(BMI.obese.x[1:25,])))
+BMI.full.fc = data.frame(BMI.obese[BMI_signames.fc,]$logFC,#append respective logFC info
+                  BMI.ovwgt[BMI_signames.fc,]$logFC,
+                  BMI.ovwgt.plus[BMI_signames.fc,]$logFC,
+                  BMI.obese.x[BMI_signames.fc,]$logFC,
+                  row.names = BMI_signames.fc)
+colnames(BMI.full.fc) <-c("obese", "ovwgt", "ovwgt.plus", "obese.x")
+
+#get gene symbols
+BMI.full.fc<-cbind(x=rownames(BMI.full.fc), BMI.full.fc)
+gene_symbols.bmi<-cbind(x=rownames(gene_symbols), gene_symbols)
+BMI.full.fc[["x"]] <- gene_symbols.bmi[match(BMI.full.fc[["x"]], gene_symbols.bmi[["x"]] ) , 'SYMBOL']
+rownames(BMI.full.fc) = make.names(BMI.full.fc[,1], unique = TRUE) # make.names allows rownames to have duplicate values (represented as a decimal):https://www.biostars.org/p/62988/
+#count dup genes in BMI.full.fc$x (the next step will alter their names)!!!!!!!!!! count(BMI.full.fc$x)
+BMI.full.fc[,1] <- NULL
+
+
+# Extraction of top ten genes per HBA contrast by logFC)
+HBA_signames.fc = unique(c(rownames(HBA.dbx[1:30,]), #stack toptable top ten rows for each contrast
+                      rownames(HBA.pre[1:30,]),
+                        rownames(HBA.pre.dbx[1:30,]),
+                        rownames(HBA.pre.dbx.x[1:30,])))
+
+HBA.full.fc = data.frame(HBA.dbx[HBA_signames.fc,]$logFC, 
+                  HBA.pre[HBA_signames.fc,]$logFC,
+                  HBA.pre.dbx[HBA_signames.fc,]$logFC,
+                  HBA.pre.dbx.x[HBA_signames.fc,]$logFC,
+                  row.names = HBA_signames.fc)
+colnames(HBA.full.fc) <-c("Dbx", "Pre", "Pre.dbx", "pre.dbx.x")
+
+
+
+#get gene symbols
+HBA.full.fc<-cbind(x=rownames(HBA.full.fc), HBA.full.fc)
+gene_symbols.hba<-cbind(x=rownames(gene_symbols), gene_symbols)
+HBA.full.fc[["x"]] <- gene_symbols.hba[match(HBA.full.fc[["x"]], gene_symbols.hba[["x"]] ) , 'SYMBOL']
+rownames(HBA.full.fc) = make.names(HBA.full.fc[,1], unique = TRUE) # make.names allows rownames to have duplicate values (represented as a decimal):https://www.biostars.org/p/62988/
+#count dup genes in BMI.full.fc$x (the next step will alter their names)!!!!!!count(HBA.full.fc$x)
+HBA.full.fc[,1] <- NULL
+
+
+
+HEATMAPS
+_______________
+------------------------------
+install.packages("gplots")
+library("gplots")
+
+#heatmap defaults
+x11();test.bmi <- heatmap.2(as.matrix(BMI.full.fc), scale="none", margins = c(10, 10)) #BMI
+x11();test.hba <- heatmap.2(as.matrix(HBA.full.fc), scale="none", margins = c(14, 14)) #HBA
+
+# BMI clustering by correlation distance
+hc<-as.dendrogram(hclust(dist(1-cor(BMI.full.fc, method= "pearson")))) #trasposed because 'cor' only works on columns
+hr<-as.dendrogram(hclust(dist(1-cor(t(BMI.full.fc), method= "pearson"))))
+> 5a
+x11();test.BMI <- heatmap.2(as.matrix(BMI.full.fc), scale="none", Rowv=hr, Colv=hc, margins = c(14, 14))
+
+#HBA  clustering by correlation distance
+hc<-as.dendrogram(hclust(dist(1-cor(HBA.full.fc, method= "pearson")))) #Apply clustering to HBA by correlation (Pearson seems better fit)
+hr<-as.dendrogram(hclust(dist(1-cor(t(HBA.full.fc), method= "pearson"))))
+> 5b
+x11();test.hba <- heatmap.2(as.matrix(HBA.full.fc), scale="none", Rowv=hr, Colv=hc, margins = c(14, 14))
+
+
+> conclusion: Trancritpmoic profile of metabolic disturbance is nuanced (small effects with no outright significance). Pre and dbx are basically different until you start combining them as is done here: The basic dbx profile is weakened a small degree by being merged with pre and compared against normals (pre.dbx). Signal is made slightly stronger by adding pre to normals group (pre.dbx.x)
+
+
+#Thoughts:
+#scale=none -> empirically important across the matrix. 
+#when scale= column  -> empirically important within column.
+#For HBA scale=none vs scale=column are almost the same, with not much happening. Scaling by column tells you more about what is going on at gene level.
+#- Is like the difference between comparing system-level and gene-level effects; big gene-level movements hardly make a ripple at system level, as evidenced by the failure to find genome-wide significant effects (scaled globally or scaled to each gene)
+
+#To do:
+_____
+#Increase number of top genes per contrast:20 -> 50 -> 100
+#lose redundant SVs
+#attempt to subtract medication-related trancripts for BMI only?
+
+#Download UpsetR: https://github.com/hms-dbmi/UpSetR
+install.packages("UpSetR")
+library("UpSetR")
+
+#bmi
+upset.bmi<-data.frame(results.bmi[,1:4])
+colnames(upset.bmi) <-c("obese", "ovwgt", "ovwgt.plus", "obese.x")
+upset.bmi<-cbind(genes = rownames(upset.bmi), upset.bmi) #rowname col is factor
+upset.bmi[upset.bmi ==-1]<-1
+> 6a
+x11();upset(upset.bmi)
+
+#hba
+upset.hba<-data.frame(results.hba[,1:4])
+colnames(upset.hba) <-c("Dbx", "Pre", "Pre.dbx", "pre.dbx.x")
+upset.hba<-cbind(genes = rownames(upset.hba), upset.hba) #rowname col is factor
+upset.hba[upset.hba ==-1]<-1
+> 6b
+x11();upset(upset.hba)
+
+> Adding prediabetics to the healthy group is a better fit than adding to the diabetic group. This is because this way round the transcrptomic difference between groups is maximised, as maeasured by the total overlap count, (which hits a maximimum) and the total yield of hits passing P<0.001 for this comparison (n=56), which is also greater than dbx alone (n=54). However this is all overshadowed by fact that these results occur in the context of failure to find enrichment of significant p values
+
+#create summaries
+___________________
+
+#BMI
+dim(results.bmi)
+bmi.summary<-data.frame(results.bmi)
+bmi.summary$neg<-rowSums(bmi.summary[1:4]<0)
+bmi.summary$pos<-rowSums(bmi.summary[1:4]>0)
+bmi.summary$tot <-rowSums(bmi.summary[1:4]>0 | bmi.summary[1:4]<0) #How many up? How many down? how many overlaps (ie tot>1)? how often are overlaps directionally concordant?
+#length(which(bmi.summary$tot >0)) # use this to check what length should be
+> 7a
+bmi.summary<-subset(bmi.summary, !bmi.summary[ , 7] < 1) # col7 = tot. Checks that the 'tot' column is non null (ie, removes rows where total is null). Check observed rows = expected rows
+colnames(bmi.summary)[1:4] <-c("obese", "ovwgt", "ovwgt.plus", "obese.x")
+
+#HBA
+dim(results.hba) #4745, 4
+hba.summary<-data.frame(results.hba)
+hba.summary$neg<-rowSums(hba.summary[1:4]<0)
+hba.summary$pos<-rowSums(hba.summary[1:4]>0)
+hba.summary$tot <-rowSums(hba.summary[1:4]>0|hba.summary[1:4]<0)
+#length(which(hba.summary$tot >0)) # use this to check what length should be
+> 7b
+hba.summary<-subset(hba.summary, !hba.summary[ , 7] < 1) # col7 = total. Checks that the 'tot' column is non null (ie, removes rows where total is null). Check observed rows = expected rows
+colnames(hba.summary)[1:4] <-c("Dbx", "Pre", "Pre.dbx", "pre.dbx.x")
+
+----------------------------------------------------------------------------------------------------------
+#How many up? How many down? how many overlaps (ie tot>1)? how often are overlaps directionally concordant?
+#How many with Fold-change >1?
+
+----------------------------------------------------------------------------------------------------------
+
+#Add gene symbols to the summary
+bmi.summary<-cbind(x=rownames(bmi.summary), bmi.summary)
+bmi.summary[["x"]] <- gene_symbols.bmi[match(bmi.summary[["x"]], gene_symbols.bmi[["x"]] ) , 'SYMBOL']
+
+hba.summary<-cbind(x=rownames(hba.summary), hba.summary)
+hba.summary[["x"]] <- gene_symbols.hba[match(hba.summary[["x"]], gene_symbols.hba[["x"]] ) , 'SYMBOL']
+
+#Intersection of same transcript - a metric allowing comparative assessment of model quality
+#BMI
+bmi.summary$intersections<-(bmi.summary$tot -1)
+> 8a
+sum(bmi.summary$intersections) # total intersections of same transcript across- diff conditions #29
+sum(bmi.summary$intersections > 1) #5
+
+#HBA
+hba.summary$intersections<-(hba.summary$tot -1)
+> 8b
+sum(hba.summary$intersections) # total intersections #51
+sum(hba.summary$intersections >1) #2
+
+#NB. To query the intersections of a specific contrast simply sort summary by that contrast
+
+#Intersection of same genes across (all) contrasts
+______________________________________
+
+#BMI
+n_occur.bmi <- data.frame(table(bmi.summary$x)) 
+> 9a
+n_occur.bmi2 <-n_occur.bmi[n_occur.bmi$Freq > 1,]
+
+#HBA
+n_occur.hba <- data.frame(table(hba.summary$x)) 
+> 9b
+n_occur.hba2<-n_occur.hba[n_occur.hba$Freq > 1,] #which genes occured more than once?
+
+
+#Check overlap status of multiply-associated genes between BMI and HBA
+_________________________________________________________
+
+intersect.hba.bmi <- intersect(n_occur.hba2$Var1, n_occur.bmi$Var1)
+> 10a
+> bmi.summary[bmi.summary$x %in% intersect.hba.bmi,]
+
+> 10b
+> hba.summary[hba.summary$x %in% intersect.hba.bmi,]
+
+-- Check that a and b give same result
+
+
+#Check overlap status of any associated gene (weak fold change criteria, p<0.01) - useful for different conditions and/or different runs (eg comparing runs using diff nums of SVs)
+____________________________________________________
+
+> 11
+
+bmi.summary[bmi.summary$x %in% hba.summary$x,]
+hba.summary[hba.summary$x %in% bmi.summary$x,] 
+-- Check that a and b give same result
+# must correct for fact that chances of overlap increases with list lengths
+
+
+#naive -end
+----------------------------------------------------------------------------------
+
+------------------------------------------------------------------
+
+#Compare medicated v non-medicated, controlling for dbx, obesity - subtract assoc transcripts fr analysis - STarT
+---copied to initial pheno,mini step therefore can delete
+list<-c(118, 133, 227, 237, 241, 247, 249, 250, 263, 265, 287, 307, 319, 320, 384, 403, 415, 434, 491, 499, 512, 531, 583, 591, 607, 621, 623, 624, 638, 660, 664, 671, 683, 698, 718) #all drug naive cases
+
+pheno.mini["dnaive"]<-0 #create new column for drug naive status - fill with zeros
+pheno.mini$dnaive[pheno.mini$FolderID %in% list]<-1
+---
+meds.svmod0 = model.matrix(~ 0 + FolderID + Age.norm + gender + PC1 + PC2 + ChipID_1 + ChipID_2 + Timepoint + BMI.catg + hba1c.catg, data=pheno.mini) 
+meds.svmod.catg = model.matrix(~ 0 +  FolderID + dnaive + Age.norm + gender + PC1 + PC2+ ChipID_1 + ChipID_2 + Timepoint + BMI.catg + hba1c.catg, data=pheno.mini)
+
+meds.svmod.catg<-as.data.frame(meds.svmod.catg)# convert -> data.frame
+meds.pheno.genex<-gx.postjoin.1[gx.postjoin.1$FolderID %in% meds.svmod.catg$FolderID,]#select gene expression data corresponding to FolderID rows in meds.svmod.catg
+meds.svmod.catg$FolderID<-NULL #remove FolderID:meds.svmod.catg
+meds.svmod.catg<-as.matrix(meds.svmod.catg) #revert back to matrix
+
+meds.svmod0<-as.data.frame(meds.svmod0)
+meds.svmod0$FolderID<-NULL #remove FolderID:meds.svmod0
+meds.svmod0<-as.matrix(meds.svmod0) #revert back to matrix
+
+
+head(data.frame(colnames(meds.pheno.genex)), 54)#GX starts at col48
+meds.pheno.genex[,48:length(meds.pheno.genex)] = apply(meds.pheno.genex[,48:length(meds.pheno.genex)], 2, function(x) as.numeric(as.character(x))) 
+
+#excision gene-expression data
+meds.GX<-t(meds.pheno.genex[-c(1:47)]) #transpose
+colnames(meds.GX)<-meds.pheno.genex[,2]#re-attachment of colnames
+
+meds.numsv=num.sv(meds.GX, meds.svmod.catg, method="be") #n=5 
+meds.svobj = sva(meds.GX, meds.svmod.catg, meds.svmod0,n.sv=meds.numsv) #calculates and counts surrogate vars#generate SVs first..
+
+#correlation of SVs from previous traits
+cor(meds.svobj$sv, svobj.bmi.catg$sv, method = "spearman") # 5 SVs in total: correlation >0.99; #means SVs are consistent for different phenotypes therefore probably technical
+
+#Retaining Svs
+meds.sv.5<-meds.svobj$sv #Keep all Svs
+meds.sv.2<-as.matrix(meds.sv.5[,-c(1:3)]) #Keep only Svs 4 & 5
+
+meds.svmod.catg.2 = cbind(meds.svmod.catg, meds.sv.2)
+colnames(meds.svmod.catg.2)[56:57] <- c("sv4", "sv5")  
+
+meds.svmod.catg.5 = cbind(meds.svmod.catg, meds.sv.5)
+colnames(meds.svmod.catg.5)[56:60] <- c("sv1", "sv2", "sv3","sv4", "sv5") 
+
+#generate fits
+fit.2=lmFit(meds.GX, meds.svmod.catg.2) 
+fit.5=lmFit(meds.GX, meds.svmod.catg.5) 
+
+
+#Create contrast matix
+contrast.matx.2 <- makeContrasts (dnaive, levels = meds.svmod.catg.2) 
+contrast.matx.5 <- makeContrasts (dnaive, levels = meds.svmod.catg.5) 
+
+fit2.2=contrasts.fit(fit.2, contrast.matx.2)
+fit2.5=contrasts.fit(fit.5, contrast.matx.5)
+
+fit2.2.eBayes<-eBayes(fit2.2) ###use eBayes() to moderate the estimated error variances
+fit2.5.eBayes<-eBayes(fit2.5)
+
+fit.meds.sv2 = topTable(fit2.2.eBayes, sort.by="p", number=Inf) #
+fit.meds.sv5 = topTable(fit2.5.eBayes, sort.by="p", number=Inf) #
+
+> 1a
+with(fit.meds.sv2, sum(P.Value < 0.01 & logFC > 1| P.Value < 0.01 & logFC < -1)) #=0
+with(fit.meds.sv5, sum(P.Value < 0.01 & logFC > 1| P.Value < 0.01 & logFC < -1)) #=0
+
+> 2a
+with(fit.meds.sv2, sum(P.Value < 0.5 & logFC > 1| P.Value < 0.5 & logFC < -1)) #=0
+with(fit.meds.sv5, sum(P.Value < 0.5 & logFC > 1| P.Value < 0.5 & logFC < -1)) #=0
+
+> 3a
+hist(fit.meds.sv2$P.Value,main='SV=2 Histogram of P-values') # 
+hist(fit.meds.sv5$P.Value,main='SV=5 Histogram of P-values') # 
+
+> V plot
+old.par <- par(mfrow=c(1, 2))
+plot(fit.meds.sv2$logFC, -log10(fit.meds.sv2$P.Value), col=1+(abs(fit.meds.sv2$logFC) >1 & fit.meds.sv2$P.Value < 0.01), main="SV=2")
+plot(fit.meds.sv5$logFC, -log10(fit.meds.sv5$P.Value), col=1+(abs(fit.meds.sv5$logFC) >1 & fit.meds.sv5$P.Value < 0.01), main="SV=5")
+par(old.par) #reset par
+
+
+----
+library(calibrate)
+old.par <- par(mfrow=c(1, 2))
+#SV5
+volcan<-cbind(x=rownames(fit.meds.sv5), fit.meds.sv5)
+gene_symbols.meds <-gene_symbols.bmi
+volcan[["x"]] <- gene_symbols.meds[ match(volcan[['x']], gene_symbols.meds[['x']] ) , 'SYMBOL']
+with(volcan, plot(logFC, -log10(P.Value), pch=20, main="Basic Volcano plot SV5", xlim=c(-1.5,1.5)))
+with(subset(volcan, P.Value<.01 ), points(logFC, -log10(P.Value), pch=20, col="red"))
+with(subset(volcan, abs(logFC)>1), points(logFC, -log10(P.Value), pch=20, col="orange"))
+with(subset(volcan, P.Value<.01 & abs(logFC)>1), points(logFC, -log10(P.Value), pch=20, col="green"))
+with(subset(volcan, P.Value<.01 & abs(logFC)>1), textxy(logFC, -log10(P.Value), labs=x, cex=.9))
+
+#SV2
+volcan2<-cbind(x=rownames(fit.meds.sv2), fit.meds.sv2)
+volcan2[["x"]] <- gene_symbols.meds[ match(volcan2[['x']], gene_symbols.meds[['x']] ) , 'SYMBOL']
+with(volcan2, plot(logFC, -log10(P.Value), pch=20, main="Basic Volcano plot SV2", xlim=c(-1.5,1.5)))
+with(subset(volcan2, P.Value<.01 ), points(logFC, -log10(P.Value), pch=20, col="red"))
+with(subset(volcan2, abs(logFC)>1), points(logFC, -log10(P.Value), pch=20, col="orange"))
+with(subset(volcan2, P.Value<.01 & abs(logFC)>1), points(logFC, -log10(P.Value), pch=20, col="green"))
+with(subset(volcan2, P.Value<.01 & abs(logFC)>1), textxy(logFC, -log10(P.Value), labs=x, cex=.9))
+par(old.par) #reset par
+
+#Heatmap prep
+meds.signames.fc = unique(c(rownames(fit.meds.sv2[1:25,]), #stack top ten rows for each contrast from  toptable output
+                      rownames(fit.meds.sv5[1:25,])))
+meds.full.fc = data.frame(fit.meds.sv2[meds.signames.fc,]$logFC,#append respective logFC info
+                  fit.meds.sv5[meds.signames.fc,]$logFC,
+                  row.names = meds.signames.fc)
+colnames(meds.full.fc) <-c("SV2", "SV5")
+
+#get gene symbols
+meds.full.fc<-cbind(x=rownames(meds.full.fc), meds.full.fc)
+gene_symbols.meds<-cbind(x=rownames(gene_symbols), gene_symbols)
+meds.full.fc[["x"]] <- gene_symbols.meds[match(meds.full.fc[["x"]], gene_symbols.meds[["x"]] ) , 'SYMBOL']
+rownames(meds.full.fc) = make.names(meds.full.fc[,1], unique = TRUE) # make.names allows rownames to have duplicate values (represented as a decimal):https://www.biostars.org/p/62988/
+#count dup genes in BMI.full.fc$x (the next step will alter their names)!!!!!!!!!! count(BMI.full.fc$x)
+meds.full.fc[,1] <- NULL
+
+
+#Defaults heatmap
+library("gplots")
+meds.heatmap <- heatmap.2(as.matrix(meds.full.fc), scale="none", margins = c(10, 10)) #BMI
+
+# BMI clustering by correlation distance
+hc<-as.dendrogram(hclust(dist(1-cor(meds.full.fc, method= "pearson")))) #trasposed because 'cor' only works on columns
+hr<-as.dendrogram(hclust(dist(1-cor(t(meds.full.fc), method= "pearson"))))
+
+> 5a
+meds.heatmap.2 <- heatmap.2(as.matrix(meds.full.fc), scale="none", Rowv=hr, Colv=hc, margins = c(14, 14))
+
+#Upset
+library("UpSetR")
+results.sv2 = decideTests(fit2.2.eBayes, adjust.method="none", p.value=0.01) #Which genes are actually differentially expressed for each comparison: DECIDETESTS
+results.sv5 = decideTests(fit2.5.eBayes, adjust.method="none", p.value=0.01) #Which genes are actually differentially expressed for each comparison: DECIDETESTS
+
+overlap.meds<-cbind(rownames(results.sv2), results.sv2, results.sv5) #rowname col is factor
+colnames(overlap.meds)<-c("transcripts", "SV2", "SV5")
+overlap.meds.raw<-data.frame(overlap.meds)
+overlap.meds.upset<-data.frame(overlap.meds)
+overlap.meds.upset[overlap.meds.upset ==-1]<-1 #tagging of all sig genes with minor effects on expression
+overlap.meds.upset$SV2<-as.numeric(as.character(overlap.meds.upset$SV2))
+overlap.meds.upset$SV5<-as.numeric(as.character(overlap.meds.upset$SV5))
+
+> 
+upset(overlap.meds.upset)
+
+#translate nuIDs into gene names
+overlap.meds.upset<-cbind(x=rownames(overlap.meds.upset), overlap.meds.upset)
+overlap.meds.upset[["x"]] <- gene_symbols.bmi[match(overlap.meds.upset[["x"]], gene_symbols.bmi[["x"]] ) , 'SYMBOL'] # dont alter the name X -refers to col in gene_symbol.bmi and .hba
+
+#cluster gene names according to freq then add further gene frequency data for sv2 and sv5 decidetest results individually
+#SV2
+overlap.meds.upset.sv2<-cbind(x=overlap.meds.upset$x, yxz = data.frame(overlap.meds.upset$transcripts), SV2=overlap.meds.upset$SV2)#Compile data, separating sv2 from sv5
+colnames(overlap.meds.upset.sv2)[2]<-"transcripts"
+meds.genecount.sv2<- data.frame(table(overlap.meds.upset.sv2$x)) #baseline gene freqs among 4745 transccripts #cluster gene names according to freq
+colnames(meds.genecount.sv2)[colnames(meds.genecount.sv2) == 'Var1'] <- "x" #replacing an already-assigned column name
+meds2.genecount.sv2<-aggregate(SV2 ~ x, data=overlap.meds.upset.sv2, sum) #count number of gene entries in results for clustered genes
+Counts.meds.2<-merge(meds.genecount.sv2, meds2.genecount.sv2[, c("x", "SV2")], by="x")#Works!
+#SV5
+overlap.meds.upset.sv5<-cbind(x=overlap.meds.upset$x, transcript=data.frame(overlap.meds.upset$transcripts), SV5=overlap.meds.upset$SV5) #Compile data, separating sv5 from sv2
+colnames(overlap.meds.upset.sv5)[2]<-"transcripts"
+meds.genecount.sv5<- data.frame(table(overlap.meds.upset.sv5$x)) #baseline gene freqs among 4745 transccripts #cluster gene names according to freq
+colnames(meds.genecount.sv5)[colnames(meds.genecount.sv5) == 'Var1'] <- "x" #replacing an already-assigned column name
+meds2.genecount.sv5<-aggregate(SV5 ~ x, data=overlap.meds.upset.sv5, sum) #count number of gene entries in results for clustered genes
+Counts.meds.5<-merge(meds.genecount.sv5, meds2.genecount.sv5[, c("x", "SV5")], by="x")#Works!
+
+#Merge summaries
+identical(Counts.meds.5$Freq, Counts.meds.5$Freq)# make sure prior to merge
+Counts.meds.ALL_SVs<-merge(Counts.meds.2, Counts.meds.5[, c("x", "SV5")], by="x") #Merge both Counts.meds objects
+Counts.meds.ALL_SVs[Counts.meds.ALL_SVs$SV2>1 | Counts.meds.ALL_SVs$SV5>1,]# Output:this lines puts the gene frequencies returned from decideTests in the context of overall gene frequency (n=4745)
+table(Counts.meds.ALL_SVs$SV2)#Use this to confirm previous line
+table(Counts.meds.ALL_SVs$SV5)#Use this ti confirm same line
+
+#Retrieve info on interesting genes
+dup_genes<-c("CERK", "GAPT", "TSPO", "CLC")#Add genes of interest from above to a list
+a<-gene_symbols.meds[gene_symbols.meds$TargetID %in% dup_genes,]
+a<-a[ , c("x", "TargetID", "CHROMOSOME", "REFSEQ_ID", "ENTREZ_GENE_ID", "DEFINITION", "PROTEIN_PRODUCT", "good_probe")]
+
+#Pull out individual gene profiles out of summary
+______________________________________________
+#SV2
+results.Toptabl.genes.2<-cbind(x= rownames(fit.meds.sv2), fit.meds.sv2)#Add gene symbols to the Toptable summary first
+results.Toptabl.genes.2$x <- gene_symbols.meds[match(results.Toptabl.genes.2$x, gene_symbols.meds$x) , 'SYMBOL']
+query.CLC.sv2 <- results.Toptabl.genes.2[results.Toptabl.genes.2$x == "CLC", ] # p=0.049, logFC=-1.03
+query.CERK.sv2 <- results.Toptabl.genes.2[results.Toptabl.genes.2$x == "CERK", ] # p=0005, p=0006; logFC=0.29,0.27
+query.GAPT.sv2 <- results.Toptabl.genes.2[results.Toptabl.genes.2$x == "GAPT", ] # p>0.05
+query.TSPO.sv2 <- results.Toptabl.genes.2[results.Toptabl.genes.2$x == "TSPO", ] # p=0.005, p=0.009; logFC-0.30,-0.36
+
+print(query.CERK.sv2)
+print(query.GAPT.sv2)
+print(query.TSPO.sv2 )
+
+#SV5
+results.Toptabl.genes.5<-cbind(x= rownames(fit.meds.sv5), fit.meds.sv5)#Add gene symbols to the Toptable summary first
+results.Toptabl.genes.5$x <- gene_symbols.meds[match(results.Toptabl.genes.5$x, gene_symbols.meds$x) , 'SYMBOL']
+query.CLC.sv5 <- results.Toptabl.genes.5[results.Toptabl.genes.5$x == "CLC", ] # p=0.0003; logFC=-1.03
+query.CERK.sv5 <- results.Toptabl.genes.5[results.Toptabl.genes.5$x == "CERK", ] # p=0.0008, 0.016; logFC=0.27, 0.21
+query.GAPT.sv5 <- results.Toptabl.genes.5[results.Toptabl.genes.5$x == "GAPT", ] # p=0.002, 0.007; logFC=-0.46,-0.49
+query.TSPO.sv5 <- results.Toptabl.genes.5[results.Toptabl.genes.5$x == "TSPO", ] # p=0.0003, 0.01, 0.02, 0.34; logFC=0.27, 0.21 directionally consistent if nothing else
+
+print(query.CLC.sv5)
+print(query.CERK.sv5)
+print(query.GAPT.sv5)
+print(query.TSPO.sv5 )
+
+
+----------
+http://www.gettinggeneticsdone.com/2012/03/pathway-analysis-for-high-throughput.html
+# significant genes is a vector of fold changes where the names
+# are ENTREZ gene IDs. The background set is a vector of all the 
+# genes represented on the platform.
+library(SPIA)
+
+results.Toptabl.genes.2<-cbind(x= rownames(fit.meds.sv2), fit.meds.sv2)
+top.5<-cbind(x = rownames(fit.meds.sv5), logFC=data.frame(fit.meds.sv5$logFC), P.Value=data.frame(fit.meds.sv5$P.Value))
+colnames(top.5)[2:3]<-c("logFC", "P.Value")
+top.5$x<-as.character(top.5$x)
+top.5<-data.frame(top.5) #renaming of x kicks in now
+top.5 <- na.omit(subset(top.5, select=c(x, logFC, P.Value)))
+top.5[["ENTREZ"]] <- gene_symbols.meds[match(top.5[["x"]], gene_symbols.meds[["x"]] ) , 'ENTREZ_GENE_ID']
+top.5<-top.5[!is.na(top.5$ENTREZ),]
+top.5<-top.5[!duplicated(top.5$ENTREZ),]
+top.5[["SYMBOL"]] <- gene_symbols.meds[match(top.5[["x"]], gene_symbols.meds[["x"]] ) , 'SYMBOL']
+top.5<-top.5[!is.na(top.5$SYMBOL),]
+top.5<-top.5[!duplicated(top.5$SYMBOL),]
+
+top.5$ENTREZ<-as.character(top.5$ENTREZ)
+top.5$SYMBOL<-as.character(top.5$SYMBOL)
+top.5[1:20,]
+sig_genes <- subset(top.5, P.Value<0.01)$logFC #A named vector containg log2 fold-changes of the diff-expressed genes. The names of this numeric vector are Entrez gene IDs
+names(sig_genes) <- subset(top.5, P.Value<0.01)$ENTREZ
+all_genes <- top.5$ENTREZ
+
+
+# run SPIA.
+spia_result <- spia(de=sig_genes, all=all_genes, organism="hsa", plots=T) #this error occured: https://support.bioconductor.org/p/56521/
+
+#hsa: homo sapiens
+#de= A named vector containg log2 fold-changes of the diff-expressed genes. The names of this numeric vector are Entrez gene IDs
+#all= A vector with the Entrez IDs in the reference set. If the data was obtained from a microarray experiment, this set will contain all genes present on the specific array used for the experiment. This vector should contain all names of the de argument.
+
+head(spia_result)
+plotP(spia_result, threshold=0.21)# i think tis will not work because plot=F
+---------
+
+
+#Unfinished
+hba.summary$x<-gsub("^$|^ $", NA, hba.summary$x)#converts blank cells to NAs.Based onhttp://stackoverflow.com/questions/31516192/fast-way-to-replace-all-blanks-with-na-in-r-data-table
+hba.summary$x[is.na(hba.summary$x)] <- as.character(rownames(hba.summary)[is.na(hba.summary$x)]) #substitutes missing gene names with corresponding nuID
+hba.summary$genecount <- count(hba.summary$x)
+
+

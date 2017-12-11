@@ -14,13 +14,25 @@ pval_anal <- function(path) {
     simplify = FALSE,
     header = FALSE
   )
+  
+  
+  means = sapply(files, function(x) {
+    
+   mean(x[,4] )
+    
+  })
+  
+  
   print(length(filenames))
   
   
   my_files = sapply(c(1:length(files)),  function(f) {
     name = basename(dirname(filenames[f]))
     my_f = files[[f]]
+    
     my_f[, 8] = rep(name, 1100)
+    my_f[, 9] = mean(my_f[,4] )
+    
     my_f
   }, simplify = FALSE)
   
@@ -36,7 +48,7 @@ pval_anal <- function(path) {
     unlist(ann)
   }, simplify = FALSE)
   
-  results[9] = unlist(groups_ann)
+  results[10] = unlist(groups_ann)
   colnames(results)  =  c(
     "lambda_min",
     "error_min",
@@ -45,7 +57,7 @@ pval_anal <- function(path) {
     "alpha",
     "iteration",
     "parameter_combi",
-    'run_type',
+    'run_type', 'mean',
     'dataset'
   )
   
@@ -72,11 +84,23 @@ pval_anal <- function(path) {
   #ggsave(paste0(path, "/gene_runs_lineplot.pdf"), line_plot)
   
   
+  
   #scale_y_continuous(limits = quantile(log10(results$error_dev), c(0.00, 0.95))) removes the 5% outliers
-  my_plot = ggplot(data = results, aes(run_type, (error_dev)), outlier.shape = NA) + geom_boxplot(aes(color =
-                                                                                 run_type)) + scale_y_continuous(limits = quantile((results$error_dev), c(0.00, 0.90)))
+  
+ 
+  all_r_means = unlist(sapply(unique(results$run_type),  function(x) { mean(results[results$run_type == x, ]$mean)}, simplify=FALSE))
+  all_r_means = all_r_means[order(all_r_means)]
   
   
+  all_r = sapply(names(all_r_means),  function(x) { results[results$run_type == x, ]}, simplify=FALSE)
+  all_r = do.call(rbind, all_r)
+  
+  all_r$run_type = factor(all_r$run_type, levels=unique(all_r$run_type))
+  my_plot = ggplot(data = all_r, aes(run_type, (error_dev)), outlier.shape = NA) + geom_boxplot(aes(color =
+                                                                                 run_type)) + 
+    scale_y_continuous(limits = quantile((results$error_dev), c(0.00, 0.90)))
+  
+  print(all_r_means)
   # compute lower and upper whiskers
  # ylim1 = boxplot.stats(results$error_dev)$stats[c(1, 5)]
   
@@ -95,7 +119,7 @@ args <-commandArgs(trailingOnly = TRUE)#trailing only stops the argument functio
 print(paste0('Input directory for p value analysis:', args[1]))#This line will tell you the input directory
 
 args[1] = "C:/Users/spjtcoi/Google Drive/bmi/categorical/classification_bmi/plot/plot"
-#args[1] = "/Users/ti1/Documents/conrad/results/snps2"
+args[1] = "/Users/ti1/Google\ Drive/bmi/categorical/classification_without_chip/plot"
 if (length(args) == 1) {
   pval_anal(args[1])#if a single argument is entered then that paramater should be the directory path
 } 
