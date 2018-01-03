@@ -40,9 +40,9 @@ pval_anal<-function(path, top=0, type, all_genes_names){
 		if (top >0) {
 		  
 
-		  positive_genes = intersect(as.character(all_genes_names), as.character(rownames(positive_freq)))
-		  
+		  positive_genes = intersect(as.character(rownames(positive_freq)), as.character(all_genes_names))
 		  subset_genes = head(positive_genes, as.numeric(top))
+		  
 		  print(subset_genes)
 		  out_name = '/remove_top_'
 		  
