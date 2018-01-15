@@ -1,5 +1,5 @@
 #!/bin/sh
-#$ -N snps_social
+#$ -N full
 #$ -q LowMemShortterm.q
 #$ -t 1-10
 #$ -pe smp 10
@@ -18,10 +18,10 @@
 
 echo $SGE_TASK_ID
 
-data="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/snps/data/data_prepared_${SGE_TASK_ID}.csv"
+data="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/snps/data/SNP_analysis_input_file_${SGE_TASK_ID}.csv"
 feature_list="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/snps/feature_list/CLASSES_SNP_data.txt"
-features_to_remove="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/snps/remove/remove_social.txt" #if nothing to remove then just add EMPTY (or any word) without brackets eg.features_to_remove="EMPTY" 
-output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/snps/output/social"
+features_to_remove="EMPTY" #if nothing to remove then just add EMPTY (or any word) without brackets eg.features_to_remove="EMPTY" 
+output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/snps/output333/full"
 
 
 #demographic_only.csv
@@ -39,7 +39,7 @@ output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/
 mkdir -p $output_dir #-p create multiple subdirectories on the fly (ie they dont already exist)
 
 module load bioinformatics/R/3.4.1
-Rscript /users/spjtcoi/git/stat_learning_code/run_dataset_generic_KCL.R $data $feature_list $features_to_remove $output_dir> $output_dir/test.${SGE_TASK_ID}.out 2> $output_dir/test.${SGE_TASK_ID}.err
+Rscript /users/spjtcoi/git/stat_learning_code/run_dataset_SNPs.R $data $feature_list $features_to_remove $output_dir> $output_dir/test.${SGE_TASK_ID}.out 2> $output_dir/test.${SGE_TASK_ID}.err
 
 
 #Commandline demo

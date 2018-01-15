@@ -5,9 +5,9 @@ args <- commandArgs(trailingOnly = TRUE)#trailing only stops the argument functi
 
 #This is just for testing purposes. If you don't make it as comment, it will overwrite any values that you have given over the command line 
 
-args[1] = "/Users/ti1/Google\ Drive/raw\ data/training_data/dataset_1.csv"
-args[2] = "/Users/ti1/Google\ Drive/raw\ data/validation_data_classification/dataset_1.csv"
-args[3] = "/Users/ti1/Google\ Drive/raw\ data/output/"
+#args[1] = "/Users/ti1/Google\ Drive/raw\ data/training_data/dataset_1.csv"
+#args[2] = "/Users/ti1/Google\ Drive/raw\ data/validation_data_classification/dataset_1.csv"
+#args[3] = "/Users/ti1/Google\ Drive/raw\ data/output/"
 
 print(paste0('GLMNET analaysis'))
 print(paste0('Dataset train:', args[1]))
@@ -22,7 +22,9 @@ same_columns = intersect(colnames(data_train), colnames(data_test))
 data_train = data_train[, which(colnames(data_train) %in% same_columns)]
 data_test = data_test[, which(colnames(data_test) %in% same_columns)]
 
-target_columns = "BMI.catg"
+target_columns = "BMI.catg" #Choose BMI.catg or hba1c.catg
+print(paste0('Target equals: ', target_columns))#
+
 Y_train = factor(data_train[, which(colnames(data_train) %in% target_columns)])
 Y_test = factor(data_test[, which(colnames(data_test) %in% target_columns)])
 
@@ -42,16 +44,21 @@ Y_train  = Y_train[!null_rows]
 design_matrix_test = model.matrix(~.-Y_test, data=X_test)
 
 # Train the model
-glmnet.fit <- cv.glmnet(x=X_train, y=Y_train, family='binomial', alpha=0)
+print("Training GLMNet model")#
+glmnet.fit <- cv.glmnet(x=X_train, y=Y_train, family='binomial', alpha=1) #alpha changed from 0 to 1
 
 # Generate predictions
+print("generating predictions (test sample) based on training data")#
 preds <- predict(glmnet.fit, newx=design_matrix_test, type='response', s='lambda.min')
 
 # Put results into dataframe for plotting.
+print("Compiling results table")
 results <- data.frame(pred=preds, actual=Y_test)
 
 output_dir=args[3]
 dir.create(output_dir, showWarnings = TRUE, recursive = TRUE)
 
 number = Sys.getenv(c("SGE_TASK_ID"))
+
+print("Writing file") #
 write.table(results, , file=paste0(output_dir, "/predictions_", number))

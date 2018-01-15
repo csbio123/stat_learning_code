@@ -249,7 +249,7 @@ generate_predictions <- function(data, feature_list, features_to_remove, output_
     # Do your stuff...
     options(na.action=previous_na_action$na.action)
     
-    measure = "class"#can be either 'class' or 'auc'
+    measure = "auc"#can be either 'class' or 'auc'
     family="binomial"
   
     } else if(!is.null(target_column) && length(target_column) > 0) {

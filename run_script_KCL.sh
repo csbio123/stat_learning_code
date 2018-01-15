@@ -1,5 +1,5 @@
 #!/bin/sh
-#$ -N t200
+#$ -N nochipfull
 #$ -q LowMemShortterm.q
 #$ -t 1-500
 #$ -pe smp 10
@@ -15,9 +15,10 @@
 echo $SGE_TASK_ID
 
 data="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/IMPUTATION_SETS/input_files_BMI_2catg/dataset_${SGE_TASK_ID}.csv"
-feature_list="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/all_features_bmi_2categ.csv"
-features_to_remove="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/classification_bmi/full_nochip/remove_top_200.csv" #if nothing to remove then just add EMPTY (or any word) without brackets eg.features_to_remove="EMPTY" 
-output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/classification_bmi/full_nochip/t200"
+feature_list="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/FEATURE_LIST/all_features_bmi_2categ.csv"
+features_to_remove="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/remove_files/remove_chip_2018.csv" 
+#if nothing to remove then just add EMPTY (or any word) without brackets eg.features_to_remove="EMPTY" 
+output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/STUDIES/bmi_class/full_nochip/post_bug_fix/full"
 
 
 #demographic_only.csv

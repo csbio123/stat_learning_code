@@ -1,16 +1,16 @@
 library(foreign)
 library(HardyWeinberg)
-dat_1 <- read.dta("/Users/ti1/Google Drive/study2_snps_as\ predictors/additional_variables.dta")
-dat_2 <- read.dta("/Users/ti1/Google Drive/study2_snps_as\ predictors/Psychiatric diagnoses in SELCoH.dta")
-dat_3 <- read.dta("/Users/ti1/Google Drive/study2_snps_as\ predictors/SELCoH ancestry scores.dta")
-dat_4 <- read.dta("/Users/ti1/Google\ Drive/study2_snps_as\ predictors/selcoh_akt1pathway.dta")
+#dat_1 <- read.dta("/Users/ti1/Google Drive/study2_snps_as\ predictors/additional_variables.dta")
+#dat_2 <- read.dta("/Users/ti1/Google Drive/study2_snps_as\ predictors/Psychiatric diagnoses in SELCoH.dta")
+#dat_3 <- read.dta("/Users/ti1/Google Drive/study2_snps_as\ predictors/SELCoH ancestry scores.dta")
+dat_4 <- read.dta("/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/snps/files/selcoh_akt1pathway.dta")
 
 
 
 #write.table(dat_1, file="/Users/ti1/Google\ Drive/study2_snps_as\ predictors/additional_variables.csv")
 #write.table(dat_2, file="/Users/ti1/Google\ Drive/study2_snps_as\ predictors/Psychiatric diagnoses in SELCoH.csv")
 #write.table(dat_3, file="/Users/ti1/Google\ Drive/study2_snps_as\ predictors/SELCoH ancestry scores.csv")
-#write.table(dat_4, file="/Users/ti1/Google\ Drive/study2_snps_as\ predictors/selcoh&akt1pathway.csv")
+#write.table(dat_4, file="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/snps/files/selcoh_akt1pathway.csv")
 
 
 columns = colnames(dat_4)
@@ -24,11 +24,11 @@ delete = c("am1_intvra", "cd1_hhprsn", "cd1_countborn", "cd1_yrsuk", "cd1_eligib
           "psq_level_1_man", "psq_level_2_man", "psq_level_3_man", "psq_level_1_no_man", "psq_level_2_no_man",
            "canuse_times", "canuse_times_2", "canuse_times_3", "contact_1_rels", "practsupport", "emotsupport", "non_threat_events_ever",
            "age", "edu", "alone", "single", "psq_sum", "emp", "relat_stat", "housing_ten", "emp2", "social_class", "social_class_2", "index_depriv", "overall", "threat_1", "threat_2", "threat_3",
-           "threat_4", "threat_5", "threat_lstyr", "social_class_3", "country", "Dvd1_country", "country2", "Dvd1_country2", "contact_2_rels", "area_threat") 
+           "threat_4", "threat_5", "threat_lstyr", "social_class_3", "country", "Dvd1_country", "country2", "Dvd1_country2", "contact_2_rels", "area_threat", "ID") 
 
 cluster_identification = c("cd1_hhid")
 
-features = c("ID", "cd1_sex", 
+features = c( "cd1_sex", 
         "cd1_age", "sd1_ethnicity", "sd1_smoke", "sd1_cannab", "sd1_amphet", "sd1_cocaine", "sd1_ecstasy", "sd1_lsd", "sd1_tranq", "sd1_crack", "sd1_heroin",
         "dvd1_socialclass", "dvd1_edu", "pw1", "ethnic", "sexabuse", "anynonpx", "canuse", "sexphys", "sexphys_2", "total_events_ever", "total_events_ever_2", 
         "threat_events_ever", "threat_events_ever_2", "threat_events_ever_3", "sexorphys", "violence")
@@ -46,7 +46,7 @@ snps_data = snps_data[!colnames(snps_data) %in% c("X_merge")]
 
 
 SNPIDs <- colnames(snps_data)
-allells = read.table("/Users/ti1/Google\ Drive/study2_snps_as\ predictors/SNPNAMES_AND_ALLELES_FOR_RECODE.txt", header=1)
+allells = read.table("/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/snps/files/SNPNAMES_AND_ALLELES_FOR_RECODE.txt", header=1)
 recode_raw <- lapply(SNPIDs, function(x) {
   recode(as.matrix(snps_data[,x]), allells[[x]], values=c(0,1,2))
 }) #Returns list of SNPs each with genotypes and alleles as sublist
@@ -60,7 +60,7 @@ cols[1]=target
 colnames(features) = cols 
 
 print(dim(features))
-outptut_file_pre="/Users/ti1/Google\ Drive/study2_snps_as\ predictors/datasets/data_prepared"
+outptut_file_pre="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/snps/data/SNP_analysis_input_file"
 
 class_dist = features[,1]
 positives = which(class_dist=="yes")
