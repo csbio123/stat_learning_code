@@ -1,5 +1,5 @@
 #!/bin/sh
-#$ -N CVvaldhba
+#$ -N testbmichip
 #$ -q LowMemShortterm.q
 #$ -t 1-500
 #$ -pe smp 10
@@ -14,11 +14,11 @@
 
 echo $SGE_TASK_ID
 
-data="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/PREDICTION/validation_input/models_using_chipID_well/hba/dataset_${SGE_TASK_ID}.csv"
-feature_list="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/FEATURE_LIST/featurelist_hba_2categ_validation_chip_well.csv"
+data="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/PREDICTION/validation_input/equivalent_genes/bmi_chip/dataset_${SGE_TASK_ID}.csv"
+feature_list="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/FEATURE_LIST/featurelist_bmi_2categ_validation.csv"
 features_to_remove="EMPTY" 
 #if nothing to remove then just add EMPTY (or any word) without brackets eg.features_to_remove="EMPTY" 
-output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/PREDICTION/output/CV_in_validationset_chip_well/hba"
+output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/PREDICTION/output/CV_in_validationset/bmi"
 
 
 #demographic_only.csv
