@@ -1,6 +1,6 @@
 #!/bin/sh
 #$ -N equalhbaNochip
-#$ -q LowMemLongterm.q
+#$ -q HighMemLongterm.q
 #$ -t 1-500
 #$ -pe smp 10
 #$ -l h_rt=00:10:00
@@ -17,9 +17,9 @@ echo $SGE_TASK_ID
 
 training_input="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/IMPUTATION_SETS/input_files_HBA_2catg_nochips/dataset_${SGE_TASK_ID}.csv"
 test_input="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/PREDICTION/validation_input/non_equivalent_genes/simple_preds_no_prior_model_info/hba/dataset_${SGE_TASK_ID}.csv"
-output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/PREDICTION/validation_input/equivalent_genes/hba_No_chip"
-gene_ex_starts_trainingset="15"
-gene_ex_starts_testset="22"
+output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/PREDICTION/validation_input/equivalent_genes/bmi_chip"
+gene_ex_starts_trainingset="16"
+gene_ex_starts_testset="23"
 
 # input parameters via commandline (trouble-shooting mode only)
 #output_dir=$1 #comment this out if running as batch

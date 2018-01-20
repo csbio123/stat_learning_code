@@ -27,7 +27,7 @@ same_columns = intersect(colnames(data_train[args[4]:length(data_train)]), colna
 
 #X_train = data_train[, -which(colnames(data_train) %in% target_columns)]
 data_test2 = data_test[, which(colnames(data_test) %in% same_columns)] #isolated genes in separate file
-datasets_merged<-cbind(data_test[,(1:args[4])], data_test2)
+datasets_merged<-cbind(data_test[,c(2:args[5])], data_test2)
 
 previous_na_action <- options('na.action')
 options(na.action='na.pass')
