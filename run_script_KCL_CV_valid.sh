@@ -1,9 +1,9 @@
 #!/bin/sh
-#$ -N testbmichip
-#$ -q LowMemShortterm.q
+#$ -N hbatrnscrpt_only
+#$ -q LowMemLongterm.q
 #$ -t 1-500
 #$ -pe smp 10
-#$ -l h_rt=00:20:00
+#$ -l h_rt=00:10:00
 #$ -o /dev/null
 #$ -e /dev/null
 
@@ -14,11 +14,11 @@
 
 echo $SGE_TASK_ID
 
-data="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/PREDICTION/validation_input/equivalent_genes/bmi_chip/dataset_${SGE_TASK_ID}.csv"
-feature_list="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/FEATURE_LIST/featurelist_bmi_2categ_validation.csv"
-features_to_remove="EMPTY" 
+data="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/PREDICTION/validation_input/equivalent_genes/hba_No_chip/dataset_${SGE_TASK_ID}.csv"
+feature_list="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/FEATURE_LIST/validationset_matched_transcripts/hba_Nochip.csv"
+features_to_remove="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/remove_files/transcript_only.csv" 
 #if nothing to remove then just add EMPTY (or any word) without brackets eg.features_to_remove="EMPTY" 
-output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/PREDICTION/output/CV_in_validationset/bmi"
+output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/PREDICTION/output/matched_GXdata/hba_transcript_only"
 
 
 #demographic_only.csv

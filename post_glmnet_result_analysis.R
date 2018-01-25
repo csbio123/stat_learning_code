@@ -113,7 +113,7 @@ pval_anal <- function(path) {
 #arg function below is in-built. It allows you to interact with the script from the command line.
 
 #####USE AS FOLLOWS#####:
-#Rscript p_value_analysis.R /users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/all_transcripts 476####
+##Rscript p_value_analysis.R /users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/PREDICTION/output/matched_GXdata/leave_one_in/bmi####
 
 args <-commandArgs(trailingOnly = TRUE)#trailing only stops the argument function from requiring specification of too much information eg R version, etc
 print(paste0('Input directory for p value analysis:', args[1]))#This line will tell you the input directory
