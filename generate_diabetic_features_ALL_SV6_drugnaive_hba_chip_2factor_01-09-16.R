@@ -47,8 +47,6 @@ prep_data<-function(covars, sva_file, bmi_sv_file, hba_sv_file, pheno, tpheno ){
   return(list(imputed_sets=abc, bmi_enet=bmi.enet, hba_enet=hba.enet)) #returning multiple things requires wrapping as a list
 }
 
-
-
 prepare_feature_sets<-function(data_list, outptut_dir, prefix="dataset") {
   
   gene_expression = subset(data_list$bmi_enet, select=-c(gender, ChipID_19020374072, ChipID_19020374078, ChipID_19020374079, ChipID_19031356054, ChipID_19031356056, ChipID_19031356068, ChipID_19216457008, ChipID_19216457009, ChipID_19216457012, ChipID_19216457014, ChipID_19216457025, ChipID_19216457029, ChipID_19216457032, ChipID_19216457033, ChipID_19234921065, ChipID_19234921066, ChipID_19234921070, ChipID_19234921074, ChipID_19234921077, ChipID_19234921082, ChipID_19234921083, ChipID_19234921090, ChipID_19234921094, ChipID_19234921101, ChipID_19235792061, ChipID_19235792082, ChipID_19235792088, ChipID_19249896045, ChipID_19249896073, ChipID_19249896091, ChipID_19249907011, ChipID_19249907021, ChipID_19249907031, ChipID_19249907044, ChipID_19249907045, ChipID_19249907052, ChipID_2B, ChipID_2C, ChipID_2D, ChipID_2E, ChipID_2F, ChipID_2G,  ChipID_2H, ChipID_2I, ChipID_2J, ChipID_2K, ChipID_2L, Timepoint, sv1, sv2, sv3, sv4, sv5, sv6, hlth, obese, Age.norm, PC1, PC2, med.days))#'ovwgt' must be deleted if running 2-category phenotypes
@@ -71,7 +69,7 @@ prepare_feature_sets<-function(data_list, outptut_dir, prefix="dataset") {
   
 }
 
-input_data=read_data("/Users/ti1/Google Drive/raw data/", "ALL_SV6_drugnaive_hba_chip_2factor_01-09-16.RData")
+input_data=read_data("C:/Users/spjtcoi/Google Drive/raw data", "ALL_SV6_drugnaive_hba_chip_2factor_01-09-17.RData")
 
 data_list = prep_data(
   input_data$imp_list_Tall,
@@ -83,5 +81,5 @@ data_list = prep_data(
 )#this works because order in function definition is maintained ie.covars, sva_file, bmi_sv_file, hba_sv_file
 #Set the folds for each BMI
 
-prepared_data = prepare_feature_sets(data_list, outptut_dir = "/Users/ti1/Google Drive/raw data/training_data/")
+prepared_data = prepare_feature_sets(data_list, outptut_dir = "C:/Users/spjtoi/Google Drive/raw data/DELETE")
 names(prepared_data)
