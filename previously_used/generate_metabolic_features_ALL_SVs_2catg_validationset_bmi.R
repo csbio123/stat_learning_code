@@ -74,6 +74,7 @@ prepare_feature_sets<-function(data_list, outptut_dir, prefix="dataset") {
 }
 
 input_data=read_data("/users/spjtcoi/git/stat_learning_code", "generate_metabolic_features_ALL_SVs_2catg_validationset_09-01-18.RData")
+#input_data=read_data("C:/Users/spjtcoi/Google Drive/conrad/dataset2_chronic_scz", "generate_metabolic_features_ALL_SVs_2catg_validationset_09-01-18.RData")
 
 data_list = prep_data(
   input_data$imp_list_Tall,
@@ -84,4 +85,5 @@ data_list = prep_data(
 #Set the folds for each BMI
 
 prepared_data = prepare_feature_sets(data_list, outptut_dir = "/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/PREDICTION/validation_input/bmi")
+#prepared_data = prepare_feature_sets(data_list, outptut_dir = "C:/Users/spjtcoi/Google Drive/conrad/dataset2_chronic_scz/inputfiles_for_validation/bmi3/")
 names(prepared_data)
