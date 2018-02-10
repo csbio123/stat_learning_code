@@ -78,31 +78,32 @@ data_list_train = prep_data(
 
 gene_expression_train = (train_data$GX_sva)
 colnames(gene_expression_train) = paste0("train_", colnames(gene_expression_train))
-category = as.factor(data_list_train$imputed_sets[[1]][,4])
+category = as.factor(data_list_train$imputed_sets[[1]][,4]) #category ==condition eg bmi_catg
 
 gene_expresion_test = (test_data$GX_sva)
 colnames(gene_expresion_test) = paste0("test_", colnames(gene_expresion_test))
 
+##BATCH CORRECTION##
 removing_unwanted_variation<-function(category, gene_expression_train, gene_expresion_test) {
   
-  same_genes = intersect( row.names(gene_expression_train), row.names(gene_expresion_test))
+  same_genes = intersect( row.names(gene_expression_train), row.names(gene_expresion_test))#intersection of genes in both training and test
   
-  train_common = gene_expression_train[rownames(gene_expression_train) %in% same_genes,]
+  train_common = gene_expression_train[rownames(gene_expression_train) %in% same_genes,] # select intersecting genes
   test_common  = gene_expresion_test[rownames(gene_expresion_test) %in% same_genes,]
   
   sample_num = 1:length(category)
   sample_name = colnames(gene_expression_train)
   train_pheno = data.frame(sample_num, condition=category, row.names = sample_name)
   
-  trainMod = model.matrix(~as.factor(condition), data=train_pheno)
+  trainMod = model.matrix(~as.factor(condition), data=train_pheno) #Within model matrix the main phenotye is the condition
   trainMod0 = model.matrix(~1, data=train_pheno)
-  trainSv = sva(train_common, trainMod, trainMod0)
+  trainSv = sva(train_common, trainMod, trainMod0)# apply sva to training data
   
-  fsvaobj = fsva(train_common, trainMod, trainSv, test_common)
-  mydataSv = list(x=fsvaobj$db, y=train_pheno$cat)
+  fsvaobj = fsva(train_common, trainMod, trainSv, test_common)#provide parameters for training sample and then matching test geneset
+  mydataSv = list(x=fsvaobj$db, y=train_pheno$cat)# col1==residualised gene expression for test geneset col2 = phenotypic status
   
-  train_common_norm = mydataSv$x
-  test_common_norm = fsvaobj$new
+  train_common_norm = mydataSv$x # residualised gene expression for test geneset 
+  test_common_norm = fsvaobj$new # corrected (residulaised) version of test geneset
   
   return(list(train_common_norm, test_common_norm))
 }
@@ -111,7 +112,7 @@ removing_unwanted_variation<-function(category, gene_expression_train, gene_expr
 prepare_feature_sets<-function(data_list, gene_expression, outptut_dir, prefix="dataset") {
   
   col_names = colnames(data_list$bmi_enet)
-  colnames(data_list$bmi_enet) = gsub("MaleGender", "gender", col_names)
+  colnames(data_list$bmi_enet) = gsub("MaleGender", "gender", col_names) # Data-specific part!
   clinical_cofounders = subset(data_list$bmi_enet, select=c(hba1c.norm))
   imputed_data = data_list$imputed_sets
   personal_cofounders = subset(data_list$bmi_enet, select=c(gender)) #decided to use gender alongside SVs4&5 as these SVs are more technical than demographic
@@ -119,7 +120,7 @@ prepare_feature_sets<-function(data_list, gene_expression, outptut_dir, prefix="
   outptut_file_pre = paste0(outptut_dir, "/" , prefix)
   print(length(imputed_data))
   
-  outptut_file = paste0(outptut_file_pre, "_gene_expression.csv")
+  outptut_file = paste0(outptut_file_pre, "_gene_expression.csv")#gene expression outputted separately
   write.csv(t(gene_expression), file=outptut_file)
   
   sapply(seq(1, length(imputed_data)), function(x) {
@@ -132,9 +133,10 @@ prepare_feature_sets<-function(data_list, gene_expression, outptut_dir, prefix="
   
 }
 
+datasets = removing_unwanted_variation(category, gene_expression_train, gene_expresion_test)
 
-prepare_feature_sets(data_list_train,gene_expression_train, "/Users/ti1/Google\ Drive/raw\ data/not_normalized_data", "validation_set")
-prepare_feature_sets(data_list_test, gene_expresion_test, "/Users/ti1/Google\ Drive/raw\ data/not_normalized_data", "training_set")
+prepare_feature_sets(data_list_test, datasets[[2]], "/Users/ti1/Google\ Drive/raw\ data/batch_normalized_data", "validation_set")
+prepare_feature_sets(data_list_train, datasets[[1]], "/Users/ti1/Google\ Drive/raw\ data/batch_normalized_data", "training_set")
 
 
 
