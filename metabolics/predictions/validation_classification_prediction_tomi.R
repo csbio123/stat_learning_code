@@ -1,6 +1,7 @@
 
 library(glmnet)
 library(caret)
+library(randomForest)
 
 before <- Sys.time() 
 
@@ -16,9 +17,10 @@ args[1] = "/Users/ti1/Google Drive/validation_prediction/not_normalized_data/tra
 args[2] = "/Users/ti1/Google Drive/validation_prediction/not_normalized_data/validation_set_1.csv"
 args[3] = "/Users/ti1/Google Drive/validation_prediction/not_normalized_data/training_set_gene_expression.csv"
 args[4] = "/Users/ti1/Google Drive/validation_prediction/not_normalized_data/validation_set_gene_expression.csv"
-args[5] = "/Users/ti1/Google Drive/validation_prediction/validation_features.csv"
-args[6] = "/Users/ti1/Google Drive/raw data/validation_prediction/remove_demo.txt"
+args[5] = "/Users/ti1/Google Drive/validation_prediction/validation_features_symbols.csv"
+args[6] = "/Users/ti1/Google\ Drive/validation_prediction/remove_de23mo.txt"
 args[7] = "/Users/ti1/Google Drive/raw data/validation_prediction/test_output-dir"
+args[8] = "/Users/ti1/Google Drive/validation_prediction/gene_names.csv"
 
 print(paste0('GLMNET analaysis'))
 print(paste0('Dataset train:', args[1]))
@@ -28,6 +30,7 @@ print(paste0('Genes test: ', args[4] ))
 print(paste0('All features: ', args[5] ))
 print(paste0('To remove features: ', args[6] ))
 print(paste0('Output-dir: ', args[7] ))
+print(paste0('Gene names: ', args[8] ))
 
 number = Sys.getenv(c("SGE_TASK_ID"))
 
@@ -36,6 +39,30 @@ data_train = read.csv(args[1], stringsAsFactors = FALSE)
 data_test = read.csv(args[2], stringsAsFactors = FALSE)
 gene_expression_train = read.csv(args[3], stringsAsFactors = FALSE)
 gene_expression_test = read.csv(args[4], stringsAsFactors = FALSE)
+gene_names = read.table(args[8] , stringsAsFactors = FALSE)
+
+
+#symbols =  gene_symbols$SYMBOL
+#symbols=gsub("-", "_", symbols)
+#symbols=gsub("\\..*", "", symbols)
+#good = (symbols != "")
+#symbols = symbols[good]
+#nuID = gene_symbols$nuID
+#nuID = nuID[good]
+
+#gene_names = cbind(nuID, symbols)
+#write.table(gene_names, file="/Users/ti1/Google Drive/validation_prediction/gene_names.csv")
+nuID = gene_names[,1]
+symbols = gene_names[,2]
+
+gene_expression_train = gene_expression_train[,which(colnames(gene_expression_train) %in% nuID)]
+gene_expression_test = gene_expression_test[,which(colnames(gene_expression_test) %in% nuID)]
+
+genes_train = symbols[which(nuID  %in%  colnames(gene_expression_train))]
+genes_test = symbols[which(nuID  %in%  colnames(gene_expression_test))]
+
+colnames(gene_expression_train) = genes_train
+colnames(gene_expression_test) = genes_test
 
 #This is the fike which contains all features and its corresponding class
 #Column 1: Feature name
@@ -59,6 +86,7 @@ data_train = cbind(data_train, gene_expression_train)
 data_test = cbind(data_test, gene_expression_test)
 
 same_columns = intersect(colnames(data_train), colnames(data_test))
+print(length(same_columns))
 
 #write.csv(same_columns, "~/Downloads/test.csv")
 data_train = data_train[, which(colnames(data_train) %in% same_columns)]
@@ -114,11 +142,25 @@ same_columns = intersect(colnames(X_train), colnames(X_test))
 X_train = X_train[, which(colnames(X_train) %in% same_columns)]
 X_test = X_test[, which(colnames(X_test) %in% same_columns)]
 
+
 # Train the model
 print("Training GLMNet model")#
+d = cbind(Y_train, X_train)
+test_rf = randomForest(as.factor(Y_train)~., data=(d[,-2]), ntree=100, proximity=T)
+
+preds_rf = predict(test_rf, newdata=X_test)
+
+#varImpPlot(test_rf,  
+ #          sort = T,
+   #        n.var=20,
+       #    main="Top 10 - Variable Importance")
+#
+var.imp = data.frame(importance(test_rf, type=2))
+var.imp$Variables = row.names(var.imp)  
+top = var.imp[order(var.imp$MeanDecreaseGini,decreasing = T),]
 
 
-alphas <- seq(from = 0.1, to = 1, by = 0.001)
+alphas <- seq(from = 0.0, to = 1, by = 0.1)
 
 alpha_errors = unlist(foreach(i = 1:length(alphas), .inorder = FALSE,.packages = "glmnet", .multicombine = TRUE,.export= c("target","alphas","features")) %dopar% {
   #Run GLMNET witt our features and our target variable
@@ -140,13 +182,17 @@ glmnet.fit <- cv.glmnet(x=X_train, y=Y_train, family='binomial', alpha = best_al
 
 # Generate predictions
 print("generating predictions (test sample) based on training data")#
-preds <- as.numeric(unlist(predict(glmnet.fit, newx = X_test, type='class', s='lambda.min')))
+preds_glmnet <- as.numeric(unlist(predict(glmnet.fit, newx = X_test, type='class', s='lambda.min')))
 
 # Put results into dataframe for plotting.
 print("Compiling results table")
-results <- data.frame(run_id=number,prediction=as.factor(preds), actual=as.factor(Y_test), alpha=best_alpha)
+results <- data.frame(run_id=number,prediction_glmnet=as.factor(preds_glmnet), prediction_rf=as.factor(preds_rf), actual=as.factor(Y_test), alpha=best_alpha)
+
+confusionMatrix(data = preds_rf, reference = Y_test, mode = "prec_recall", positive = "2")
+confusionMatrix(data = preds_glmnet, reference = Y_test, mode = "prec_recall", positive = "2")
 
 print("Writing file") #
 output_dir=args[7]
 dir.create(output_dir, showWarnings = TRUE, recursive = TRUE)
 write.table(results, file=paste0(output_dir, "/predictions_", number))
+write.table(top, file=paste0(output_dir, "/feature_importance_", number))
