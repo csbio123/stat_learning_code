@@ -2,6 +2,8 @@
 library(glmnet)
 library(caret)
 
+before <- Sys.time() 
+
 args <- commandArgs(trailingOnly = TRUE)#trailing only stops the argument function from requiring specification of too much information eg R version, etc
 
 #This is just for testing purposes. If you don't make it as comment, it will overwrite any values that you have given over the command line 
@@ -116,7 +118,7 @@ X_test = X_test[, which(colnames(X_test) %in% same_columns)]
 print("Training GLMNet model")#
 
 
-alphas <- c(seq(from = 0, to = 0.1, by = 0.0001), seq(from = 0.1, to = 1, by = 0.1))
+alphas <- seq(from = 0.1, to = 1, by = 0.001)
 
 alpha_errors = unlist(foreach(i = 1:length(alphas), .inorder = FALSE,.packages = "glmnet", .multicombine = TRUE,.export= c("target","alphas","features")) %dopar% {
   #Run GLMNET witt our features and our target variable
@@ -130,6 +132,9 @@ alpha_errors = unlist(foreach(i = 1:length(alphas), .inorder = FALSE,.packages =
   return(error_mean)
 })
 
+after<-Sys.time() #stop timing
+print(after-before)
+
 best_alpha = alphas[which.max(alpha_errors)]
 glmnet.fit <- cv.glmnet(x=X_train, y=Y_train, family='binomial', alpha = best_alpha ) #0.009
 
@@ -138,8 +143,8 @@ print("generating predictions (test sample) based on training data")#
 preds <- as.numeric(unlist(predict(glmnet.fit, newx = X_test, type='class', s='lambda.min')))
 
 # Put results into dataframe for plotting.
-print("Compiling results table")v
-results <- data.frame(run_id=number,prediction=as.factor(preds), actual=as.factor(Y_test), alpha=best_alpha,)
+print("Compiling results table")
+results <- data.frame(run_id=number,prediction=as.factor(preds), actual=as.factor(Y_test), alpha=best_alpha)
 
 print("Writing file") #
 output_dir=args[7]

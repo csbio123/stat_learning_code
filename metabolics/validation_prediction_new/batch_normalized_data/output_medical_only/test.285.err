@@ -1,0 +1,21 @@
+Loading required package: Matrix
+Loading required package: foreach
+Loaded glmnet 2.0-10
+
+Loading required package: lattice
+Loading required package: ggplot2
+Warning messages:
+1: executing %dopar% sequentially: no parallel backend registered 
+2: In lognet(x, is.sparse, ix, jx, y, weights, offset, alpha, nobs,  :
+  one multinomial or binomial class has fewer than 8  observations; dangerous ground
+3: In lognet(x, is.sparse, ix, jx, y, weights, offset, alpha, nobs,  :
+  one multinomial or binomial class has fewer than 8  observations; dangerous ground
+4: In lognet(x, is.sparse, ix, jx, y, weights, offset, alpha, nobs,  :
+  one multinomial or binomial class has fewer than 8  observations; dangerous ground
+5: In lognet(x, is.sparse, ix, jx, y, weights, offset, alpha, nobs,  :
+  one multinomial or binomial class has fewer than 8  observations; dangerous ground
+6: In lognet(x, is.sparse, ix, jx, y, weights, offset, alpha, nobs,  :
+  one multinomial or binomial class has fewer than 8  observations; dangerous ground
+Warning message:
+In dir.create(output_dir, showWarnings = TRUE, recursive = TRUE) :
+  '/users/spjtcoi/git/stat_learning_code/metabolics/validation_prediction_new/batch_normalized_data/output_medical_only' already exists
