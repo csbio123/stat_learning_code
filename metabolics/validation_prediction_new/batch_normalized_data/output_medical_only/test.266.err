@@ -1,0 +1,11 @@
+Loading required package: Matrix
+Loading required package: foreach
+Loaded glmnet 2.0-10
+
+Loading required package: lattice
+Loading required package: ggplot2
+Error in { : 
+  task 814 failed - "one multinomial or binomial class has 1 or 0 observations; not allowed"
+Calls: unlist -> %dopar% -> <Anonymous>
+In addition: There were 50 or more warnings (use warnings() to see the first 50)
+Execution halted
