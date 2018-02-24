@@ -55,6 +55,7 @@ prep_data<-function(covars, sva_file, bmi_sv_file, hba_sv_file, pheno ){
 
 
 
+
 test_data=read_data("/Users/ti1/Google\ Drive/conrad/dataset2_chronic_scz/", "generate_metabolic_features_ALL_SVs_2catg_validationset_09-01-18.RData")
 
 data_list_test = prep_data(
@@ -75,6 +76,11 @@ data_list_train = prep_data(
   train_data$svmod_hba1c_catg_sv,
   train_data$pheno_mini
 )
+#Subsets ChipID", "PC1", "PC2", "Age.norm", "BMI.catg for each imputation set from onject train_data$imp_list_Tall.
+#Then Subsets individual that intersect with a curated list of individuals with good data.
+#Then checks for chip duplicates
+#Finally outputs impuatated vars, and object containing merged SV and gene expression info for bmi and hba (individually)
+
 
 gene_expression_train = (train_data$GX_sva)
 colnames(gene_expression_train) = paste0("train_", colnames(gene_expression_train))
