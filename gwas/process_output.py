@@ -72,8 +72,8 @@ for input_fasta in onlyfiles:
     if input_fasta.endswith(".fasta"):
         input_fasta = mypath +"/" + input_fasta
         print("Processing:" + input_fasta)
-        input_r = pd.read_csv(input_fasta+".out", sep='\t')
-        input_r.columns = ["protein_pos", "match", "length", "from", "to", "ignore"]
+        input_r = pd.read_csv(input_fasta+".out", sep='\t', names=["protein_pos", "match", "length", "from", "to", "ignore"], skiprows=1)
+
         sequence_dict = {}
         for seq_record in SeqIO.parse(input_fasta, "fasta"):
             seq = str(seq_record.seq)
