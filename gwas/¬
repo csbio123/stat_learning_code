@@ -57,7 +57,7 @@ sequence_dict = {}
 for seq_record in SeqIO.parse(input_fasta, "fasta"):
     seq = str(seq_record.seq)
     sw_sequence= [seq[i:i+5] for i in range(len(seq)-4)]
-    sequence_dict[seq_record.id] = [len(seq), sw_sequence]
+    sequence_dict[seq_record.id.split("|")[1]] = [len(seq), sw_sequence]
 
 
 # In[226]:
@@ -66,7 +66,7 @@ for seq_record in SeqIO.parse(input_fasta, "fasta"):
 #Generate subset, aloowing one protein to be present across subsets, but only once within the set
 all_subsets = []
 all_ids = np.array(list(sequence_dict.keys()))
-for i in range(0, number_subsets):
+for i in range(0, number_subsets-1):
     found = False
     while(not found):
         sample_ids = all_ids[np.random.choice(len(all_ids), 150, replace=False)]
@@ -88,7 +88,7 @@ for num, subset in enumerate(all_subsets):
        for j in range(0, len(ids)):
           seq = seqs[j]
           id = ids[j]
-          string += ">"+str(id)+ '_'+str(j)+"\n"+seq+"\n"
+          string += ">"+str(r)+ '_'+i++"\n"+seq+"\n"
    with open(paths[num], "w") as text_file:
      text_file.write(string)
 # In[230]:
