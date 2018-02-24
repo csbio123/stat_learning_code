@@ -9,7 +9,8 @@ import pathlib
 import os 
 import subprocess
 import sys
-
+import random
+random.seed(10)
 # In[224]:
 #Running Manually
 #This is the FASTA file which contains all the non-brain-protein-sequences from UNIPROT
@@ -44,6 +45,7 @@ maximal_length = int(sys.argv[5])
 #Number of subsets to generate
 number_subsets = int(sys.argv[6])
 
+length_peptide = int(sys.argv[7])
 
 # In[ ]:
 pathlib.Path(output_files).mkdir(parents=True, exist_ok=True)
@@ -56,7 +58,7 @@ index_name = os.path.splitext(index_name)[0]
 sequence_dict = {}
 for seq_record in SeqIO.parse(input_fasta, "fasta"):
     seq = str(seq_record.seq)
-    sw_sequence= [seq[i:i+5] for i in range(len(seq)-4)]
+    sw_sequence= [seq[i:i+length_peptide] for i in range(len(seq)-length_peptide-1)]
     sequence_dict[seq_record.id] = [len(seq), sw_sequence]
 
 
