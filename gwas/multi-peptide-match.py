@@ -34,9 +34,8 @@ index_name = os.path.basename(reference)
 sequence_dict = {}
 for seq_record in SeqIO.parse(input_fasta, "fasta"):
     seq = str(seq_record.seq)
-    gene = 
     sw_sequence= [seq[i:i+5] for i in range(len(seq)-4)]
-    sequence_dict[seq_record.id] = [len(seq), sw_sequence]
+    sequence_dict[seq_record.id.split("|")[1]] = [len(seq), sw_sequence]
 
 
 # In[226]:

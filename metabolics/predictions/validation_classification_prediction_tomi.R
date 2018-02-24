@@ -13,14 +13,14 @@ args <- commandArgs(trailingOnly = TRUE)#trailing only stops the argument functi
 #args[2] = "/Users/ti1/Google\ Drive/raw\ data/validation_data_classification/dataset_1.csv"
 #args[3] = "/Users/ti1/Google\ Drive/raw\ data/output/"
 
-args[1] = "/Users/ti1/Google Drive/validation_prediction/not_normalized_data/training_set_1.csv"
-args[2] = "/Users/ti1/Google Drive/validation_prediction/not_normalized_data/validation_set_1.csv"
-args[3] = "/Users/ti1/Google Drive/validation_prediction/not_normalized_data/training_set_gene_expression.csv"
-args[4] = "/Users/ti1/Google Drive/validation_prediction/not_normalized_data/validation_set_gene_expression.csv"
-args[5] = "/Users/ti1/Google Drive/validation_prediction/validation_features_symbols.csv"
-args[6] = "/Users/ti1/Google\ Drive/validation_prediction/remove_de23mo.txt"
-args[7] = "/Users/ti1/Google Drive/raw data/validation_prediction/test_output-dir"
-args[8] = "/Users/ti1/Google Drive/validation_prediction/gene_names.csv"
+#args[1] = "/Users/ti1/Google Drive/validation_prediction/not_normalized_data/training_set_1.csv"
+#args[2] = "/Users/ti1/Google Drive/validation_prediction/not_normalized_data/validation_set_1.csv"
+#args[3] = "/Users/ti1/Google Drive/validation_prediction/not_normalized_data/training_set_gene_expression.csv"
+#args[4] = "/Users/ti1/Google Drive/validation_prediction/not_normalized_data/validation_set_gene_expression.csv"
+#args[5] = "/Users/ti1/Google Drive/validation_prediction/validation_features_symbols.csv"
+#args[6] = "/Users/ti1/Google\ Drive/validation_prediction/remove_de23mo.txt"
+#args[7] = "/Users/ti1/Google Drive/raw data/validation_prediction/test_output-dir"
+#args[8] = "/Users/ti1/Google Drive/validation_prediction/gene_names.csv"
 
 print(paste0('GLMNET analaysis'))
 print(paste0('Dataset train:', args[1]))
