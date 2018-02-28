@@ -13,12 +13,12 @@ args <- commandArgs(trailingOnly = TRUE)#trailing only stops the argument functi
 #args[2] = "/Users/ti1/Google\ Drive/raw\ data/validation_data_classification/dataset_1.csv"
 #args[3] = "/Users/ti1/Google\ Drive/raw\ data/output/"
 
-args[1] = "/Users/ti1/Google Drive/validation_prediction/not_normalized_data/training_set_1.csv"
-args[2] = "/Users/ti1/Google Drive/validation_prediction/not_normalized_data/validation_set_1.csv"
-args[3] = "/Users/ti1/Google Drive/validation_prediction/not_normalized_data/training_set_gene_expression.csv"
-args[4] = "/Users/ti1/Google Drive/validation_prediction/not_normalized_data/validation_set_gene_expression.csv"
+args[1] = "/Users/ti1/Google Drive/validation_prediction/batch_normalized_data_reg/training_set_1.csv"
+args[2] = "/Users/ti1/Google Drive/validation_prediction/batch_normalized_data_reg/validation_set_1.csv"
+args[3] = "/Users/ti1/Google Drive/validation_prediction/batch_normalized_data_reg/training_set_gene_expression.csv"
+args[4] = "/Users/ti1/Google Drive/validation_prediction/batch_normalized_data_reg/validation_set_gene_expression.csv"
 args[5] = "/Users/ti1/Google Drive/validation_prediction/validation_features_symbols.csv"
-args[6] = "/Users/ti1/Google\ Drive/validation_prediction/remove_de23mo.txt"
+args[6] = "/Users/ti1/Google\ Drive/validation_prediction/remove_class.txt"
 args[7] = "/Users/ti1/Google Drive/raw data/validation_prediction/test_output-dir"
 args[8] = "/Users/ti1/Google Drive/validation_prediction/gene_names.csv"
 
@@ -93,11 +93,11 @@ print(length(same_columns))
 data_train = data_train[, which(colnames(data_train) %in% same_columns)]
 data_test = data_test[, which(colnames(data_test) %in% same_columns)]
 
-target_columns = "BMI.catg" #Choose BMI.catg or hba1c.catg
+target_columns = "BMI.norm"
 print(paste0('Target equals: ', target_columns))#
 
-Y_train = factor(data_train[, which(colnames(data_train) %in% target_columns)])
-Y_test = factor(data_test[, which(colnames(data_test) %in% target_columns)])
+Y_train = (data_train[, which(colnames(data_train) %in% target_columns)])
+Y_test = (data_test[, which(colnames(data_test) %in% target_columns)])
 
 X_train = data_train[, -which(colnames(data_train) %in% target_columns)]
 X_test = data_test[, -which(colnames(data_test) %in% target_columns)]
@@ -123,32 +123,39 @@ if(length(features_to_remove) >0) {
   X_test = X_test[,-which(colnames(X_test) %in% remove)]
 }
 
+
+
+
 previous_na_action <- options('na.action')
 options(na.action='na.pass')
 
 design_matrix = model.matrix(Y_train ~ ., data=X_train)
 null_rows =  rowSums(is.na(design_matrix)) > 0
 
-X_train = design_matrix[!null_rows, ]
+X_train = design_matrix[!null_rows, -1]
 Y_train  = Y_train[!null_rows]
 
 # Do your stuff...
-design_matrix_test = model.matrix(~.-Y_test, data=X_test)
+design_matrix_test = model.matrix(Y_test~., data=X_test)
 null_rows =  rowSums(is.na(design_matrix_test)) > 0
-X_test = design_matrix_test[!null_rows, ]
+X_test = design_matrix_test[!null_rows, -1]
 Y_test  = Y_test[!null_rows]
+
 
 same_columns = intersect(colnames(X_train), colnames(X_test))
 
 X_train = X_train[, which(colnames(X_train) %in% same_columns)]
 X_test = X_test[, which(colnames(X_test) %in% same_columns)]
 
+#X_train[["gender"]] = as.factor( X_train[["gender"]] )
+#X_test[["gender"]] = as.factor( X_test[["gender"]] )
+
+
 
 # Train the model
 print("Training GLMNet model")#
 d = cbind(Y_train, X_train)
-test_rf = randomForest(as.factor(Y_train)~., data=(d[,-2]), ntree=100, proximity=T)
-
+test_rf = randomForest(Y_train~., data=d, ntree=1000, proximity=T)
 preds_rf = predict(test_rf, newdata=X_test)
 
 #varImpPlot(test_rf,  
@@ -156,20 +163,20 @@ preds_rf = predict(test_rf, newdata=X_test)
    #        n.var=20,
        #    main="Top 10 - Variable Importance")
 #
-var.imp = data.frame(importance(test_rf, type=2))
-var.imp$Variables = row.names(var.imp)  
-top = var.imp[order(var.imp$MeanDecreaseGini,decreasing = T),]
+#var.imp = data.frame(importance(test_rf, type=2))
+#var.imp$Variables = row.names(var.imp)  
+#top = var.imp[order(var.imp$MeanDecreaseGini,decreasing = T),]
 
 
 alphas <- seq(from = 0.0, to = 1, by = 0.1)
 
-alpha_errors = unlist(foreach(i = 1:length(alphas), .inorder = FALSE,.packages = "glmnet", .multicombine = TRUE,.export= c("target","alphas","features")) %dopar% {
+alpha_errors = unlist(foreach(i = 1:length(alphas), .inorder = FALSE,.packages = "glmnet", .multicombine = TRUE) %dopar% {
   #Run GLMNET witt our features and our target variable
   output = cv.glmnet(
     x = X_train,
     y = Y_train,
-    family = 'binomial',
-    type.measure = "auc", nfolds = 4)
+    family = 'gaussian',
+    type.measure = "mse", nfolds = 3, alpha=alphas[i])
   
   error_mean =  mean(output$cvm)
   return(error_mean)
@@ -179,18 +186,19 @@ after<-Sys.time() #stop timing
 print(after-before)
 
 best_alpha = alphas[which.max(alpha_errors)]
-glmnet.fit <- cv.glmnet(x=X_train, y=Y_train, family='binomial', alpha = best_alpha ) #0.009
+glmnet.fit <- cv.glmnet(x=X_train, y=Y_train, family='gaussian', alpha = best_alpha ) #0.009
 
 # Generate predictions
 print("generating predictions (test sample) based on training data")#
-preds_glmnet <- as.numeric(unlist(predict(glmnet.fit, newx = X_test, type='class', s='lambda.min')))
+preds_glmnet <- as.numeric(unlist(predict(glmnet.fit, newx = X_test, s='lambda.min')))
 
 # Put results into dataframe for plotting.
 print("Compiling results table")
-results <- data.frame(run_id=number,prediction_glmnet=as.factor(preds_glmnet), prediction_rf=as.factor(preds_rf), actual=as.factor(Y_test), alpha=best_alpha)
-
-confusionMatrix(data = preds_rf, reference = Y_test, mode = "prec_recall", positive = "2")
-confusionMatrix(data = preds_glmnet, reference = Y_test, mode = "prec_recall", positive = "2")
+results <- data.frame(run_id=number,prediction_glmnet=(preds_glmnet), prediction_rf=preds_rf, actual=Y_test, alpha=best_alpha)
+results["prediction_glmnet_ape"] = 100*(abs((results["prediction_glmnet"] - results["actual"]))/results["actual"])
+results["prediction_rf_ape"] = 100*(abs((results["prediction_rf"] - results["actual"]))/results["actual"])
+mean(results[["prediction_glmnet_ape"]])
+mean(results[["prediction_rf_ape"]])
 
 print("Writing file") #
 output_dir=args[7]

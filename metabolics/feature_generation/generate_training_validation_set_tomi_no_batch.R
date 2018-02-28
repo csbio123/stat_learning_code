@@ -31,7 +31,7 @@ read_data <-function(my_dir, input_filename){
 #data_list=prep_data( sva_file=GX.sva, covars=imp.list.Tall,hba_sv_file=svmod.hba1c.catg.sv, bmi_sv_file=svmod.bmi.catg.sv, tpheno=, pheno=pheno.mini)#this works because order in function definition is maintained ie.covars, sva_file, bmi_sv_file, hba_sv_file
 
 prep_data<-function(covars, sva_file, bmi_sv_file, hba_sv_file, pheno ){
-  test.obj2<-lapply(covars,`[`, c("ChipID", "PC1", "PC2", "Age.norm", "BMI.catg"))#DELETE FOLLOWING VARS AS APPROPRIATE (ACCORDING TO TRAIT)
+  test.obj2<-lapply(covars,`[`, c("ChipID", "PC1", "PC2", "Age.norm", "BMI.catg", "BMI.norm"))#DELETE FOLLOWING VARS AS APPROPRIATE (ACCORDING TO TRAIT)
   #2=CHipID,9=PC1,10=PC2,15=Age.norm,16=BMI.norm,20=hba.norm,43=BMI.obese,52=hba.dbx, 24=GLUCOSE_GRS, 25=OBSESITY_GRS, 14=med.days  #output_check<-test.obj2[[1]]
   myvec <- sapply(test.obj2, NROW)#check rownums make sense and of equal length. have dup sample ids been removed?
   tpheno<-t(pheno)#create list of ChipIDs with same sequence as 'pheno'. To be used for post-mice filtering
@@ -135,8 +135,8 @@ prepare_feature_sets<-function(data_list, gene_expression, outptut_dir, prefix="
 
 datasets = removing_unwanted_variation(category, gene_expression_train, gene_expresion_test)
 
-prepare_feature_sets(data_list_test, datasets[[2]], "/Users/ti1/Google\ Drive/raw\ data/batch_normalized_data", "validation_set")
-prepare_feature_sets(data_list_train, datasets[[1]], "/Users/ti1/Google\ Drive/raw\ data/batch_normalized_data", "training_set")
+prepare_feature_sets(data_list_test, datasets[[2]], "/Users/ti1/Google\ Drive/validation_prediction/batch_normalized_data_reg", "validation_set")
+prepare_feature_sets(data_list_train, datasets[[1]], "/Users/ti1/Google\ Drive/validation_prediction/batch_normalized_data_reg", "training_set")
 
 
 
