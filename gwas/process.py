@@ -81,4 +81,4 @@ for input_fasta in onlyfiles:
             sequence_dict[seq_record.id] = str(seq)
         generate_results(input_r, sequence_dict, input_fasta)
 
-
+# invoke via:  python3 process.py filename_containing_generated_output

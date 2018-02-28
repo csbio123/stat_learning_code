@@ -21,11 +21,11 @@ random.seed(10)
 #output_files = "/users/spjtcoi/git/stat_learning_code/gwas/output_Non-CNS/"
 
 #MINIMUM total length of amino acids
-minimal_length = 90000
+#minimal_length = 90000
 #MAXIMUM total length of amino acids
-maximal_length = 98000
+#maximal_length = 98000
 #Number of subsets to generate
-number_subsets = 10
+#number_subsets = 10
 
 
 
@@ -118,3 +118,5 @@ for i, query_path in enumerate(paths):
      print (line)
     retval = p.wait()
 
+#python3 multi-peptide-match.py query_proteins.fasta InfluenzaA_1918_Brevig.fasta /users/spjtcoi/git/stat_learning_code/gwas/gails/ 90000 100000 11 5
+#				query_sequences	influenza_sequence output_directory   amino_acid_length_range   subset_number query_sequence_length
