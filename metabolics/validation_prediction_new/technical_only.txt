@@ -1,4 +1,0 @@
-clinical
-transcript
-demographic
-X
