@@ -1,0 +1,16 @@
+clinical
+technical
+demographic
+black
+brown
+green
+greenyellow
+grey
+magenta
+pink
+purple
+red
+tan
+turquoise
+yellow
+

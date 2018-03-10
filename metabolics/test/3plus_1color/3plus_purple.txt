@@ -1,0 +1,13 @@
+black
+blue
+brown
+green
+greenyellow
+grey
+magenta
+pink
+red
+tan
+turquoise
+yellow
+
