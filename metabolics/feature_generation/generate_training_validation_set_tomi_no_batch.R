@@ -191,6 +191,36 @@ removing_unwanted_variation_combat<-function(category_train, category_test, gene
 }
 
 
+##BATCH CORRECTION##
+removing_unwanted_variation_combat_multiple_batch<-function(category_train, category_test, gene_expression_train, gene_expresion_test, batch_train, batch_test) {
+  
+  
+  same_genes = intersect( row.names(gene_expression_train), row.names(gene_expresion_test))#intersection of genes in both training and test
+  train_common = gene_expression_train[rownames(gene_expression_train) %in% same_genes,] # select intersecting genes
+  test_common  = gene_expresion_test[rownames(gene_expresion_test) %in% same_genes,]
+  
+  sample_num = 1:length(colnames(gene_expression_train))
+  sample_name = colnames(gene_expression_train)
+  batches_train = gsub("_.*", "",gsub("train_", "",sample_name))
+  train_pheno = data.frame(sample_num,  row.names = sample_name, condition=category_train, date=batch_train)
+  #print(train_pheno)
+  
+  sample_num = 1:length(colnames(gene_expresion_test))
+  sample_name = colnames(gene_expresion_test)
+  batches_test = gsub("_.*", "",gsub("test_", "",sample_name))
+  test_pheno = data.frame(sample_num, row.names = sample_name, condition=category_test)
+  
+  modcombat = model.matrix(~as.factor(condition), data=train_pheno)
+  combat_normalized_train = ComBat(dat=gene_expression_train, batch=batches_train, mod=modcombat, par.prior=TRUE, prior.plots=FALSE)
+  
+  modcombat = model.matrix(~as.factor(condition), data=test_pheno)
+  combat_normalized_test = ComBat(dat=gene_expresion_test, batch=batches_test, mod=modcombat, par.prior=TRUE, prior.plots=FALSE)
+  
+  return(list(combat_normalized_train, combat_normalized_test))
+}
+
+
+
 
 batch_test = "/Users/ti1/Google\ Drive/validation_prediction/batch_test.csv"
 batch_train = "/Users/ti1/Google\ Drive/validation_prediction/batch_train.csv"
@@ -199,12 +229,13 @@ batch_test = read.csv(batch_test)
 batch_train = read.csv(batch_train)
 
 
-datasets_sva = removing_unwanted_variation_sva(category, gene_expression_train, gene_expresion_test)
+datasets_sva = removing_unwanted_variation_sva(category_train, gene_expression_train, gene_expresion_test)
 datasets_combat = removing_unwanted_variation_combat(category_train, category_test, gene_expression_train, gene_expresion_test)
+#datasets_combat = removing_unwanted_variation_combat_multiple_batch(category_train, category_test, gene_expression_train, gene_expresion_test, batch_train, batch_test)
 
 
-prepare_feature_sets(data_list_test, datasets_sva[[2]], "/Users/ti1/Google\ Drive/raw\ data/validation_prediction/validation_sva", "validation_set")
-prepare_feature_sets(data_list_train, datasets_sva[[1]], "/Users/ti1/Google\ Drive/raw\ data/validation_prediction/train_sva", "training_set")
+prepare_feature_sets(data_list_test, datasets_sva[[2]], "/Users/ti1/Downloads/validation_prediction/validation_sva_9_03_18", "validation_set")
+prepare_feature_sets(data_list_train, datasets_sva[[1]], "/Users/ti1/Downloads/validation_prediction/train_sva_9_03_18", "training_set")
 
 prepare_feature_sets(data_list_test, datasets_combat[[2]], "/Users/ti1/Downloads/validation_prediction/validation_combat_9_03_18", "validation_set")
 prepare_feature_sets(data_list_train, datasets_combat[[1]], "/Users/ti1/Downloads/validation_prediction/train_combat_9_03_18", "training_set")
