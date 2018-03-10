@@ -1,3 +1,6 @@
+#!/opt/apps/general/python/3.5.1/bin/python3
+
+
 import pandas as pd
 import numpy as np
 import subprocess
@@ -6,9 +9,28 @@ import pathlib
 import os 
 import subprocess
 import sys
-
+import random
+random.seed(10)
 # In[224]:
+#Running Manually
+#This is the FASTA file which contains all the non-brain-protein-sequences from UNIPROT
+#input_fasta = "/users/spjtcoi/git/stat_learning_code/gwas/query_proteins.fasta"
+#This is the 'reference' sequence (e.g. influenza A) that we will use to align our sequences to in FASTA format
+#reference = '/users/spjtcoi/git/stat_learning_code/gwas/InfluenzaA_1918_Brevig.fasta  '
+#Any output directory
+#output_files = "/users/spjtcoi/git/stat_learning_code/gwas/output_Non-CNS/"
 
+#MINIMUM total length of amino acids
+#minimal_length = 90000
+#MAXIMUM total length of amino acids
+#maximal_length = 98000
+#Number of subsets to generate
+#number_subsets = 10
+
+
+
+
+#Running on cluster
 #This is the FASTA file which contains all the non-brain-protein-sequences from UNIPROT
 input_fasta = sys.argv[1]#"/Users/ti1/Downloads/uniprot-non-brain.fasta"
 #This is the 'reference' sequence (e.g. influenza A) that we will use to align our sequences to in FASTA format
@@ -23,10 +45,12 @@ maximal_length = int(sys.argv[5])
 #Number of subsets to generate
 number_subsets = int(sys.argv[6])
 
+length_peptide = int(sys.argv[7])
 
 # In[ ]:
 pathlib.Path(output_files).mkdir(parents=True, exist_ok=True)
 index_name = os.path.basename(reference)
+index_name = os.path.splitext(index_name)[0]
 
 
 # In[225]:
@@ -34,8 +58,8 @@ index_name = os.path.basename(reference)
 sequence_dict = {}
 for seq_record in SeqIO.parse(input_fasta, "fasta"):
     seq = str(seq_record.seq)
-    sw_sequence= [seq[i:i+5] for i in range(len(seq)-4)]
-    sequence_dict[seq_record.id.split("|")[1]] = [len(seq), sw_sequence]
+    sw_sequence= [seq[i:i+length_peptide] for i in range(len(seq)-length_peptide-1)]
+    sequence_dict[seq_record.id] = [len(seq), sw_sequence]
 
 
 # In[226]:
@@ -44,7 +68,7 @@ for seq_record in SeqIO.parse(input_fasta, "fasta"):
 #Generate subset, aloowing one protein to be present across subsets, but only once within the set
 all_subsets = []
 all_ids = np.array(list(sequence_dict.keys()))
-for i in range(0, number_subsets-1):
+for i in range(0, number_subsets):
     found = False
     while(not found):
         sample_ids = all_ids[np.random.choice(len(all_ids), 150, replace=False)]
@@ -66,7 +90,7 @@ for num, subset in enumerate(all_subsets):
        for j in range(0, len(ids)):
           seq = seqs[j]
           id = ids[j]
-          string += ">"+id+"\n"+seq+"\n"
+          string += ">"+str(id)+ '_'+str(j)+"\n"+seq+"\n"
    with open(paths[num], "w") as text_file:
      text_file.write(string)
 # In[230]:
@@ -88,8 +112,11 @@ for i, query_path in enumerate(paths):
     print(query_path)
     output = str(query_path+".out")
     index_cmd = 'java -jar /Users/ti1/Downloads/PeptideMatchCMD_1.0.jar -a query -i %s -Q %s -o %s' % (index_name, query_path ,output)
+    print(index_cmd)
     p = subprocess.Popen(index_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     for line in p.stdout.readlines():
      print (line)
     retval = p.wait()
 
+#python3 multi-peptide-match.py query_proteins.fasta InfluenzaA_1918_Brevig.fasta /users/spjtcoi/git/stat_learning_code/gwas/gails/ 90000 100000 11 5
+#				query_sequences	influenza_sequence output_directory   amino_acid_length_range   subset_number query_sequence_length
