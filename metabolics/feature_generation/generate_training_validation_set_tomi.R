@@ -31,7 +31,7 @@ read_data <-function(my_dir, input_filename){
 #data_list=prep_data( sva_file=GX.sva, covars=imp.list.Tall,hba_sv_file=svmod.hba1c.catg.sv, bmi_sv_file=svmod.bmi.catg.sv, tpheno=, pheno=pheno.mini)#this works because order in function definition is maintained ie.covars, sva_file, bmi_sv_file, hba_sv_file
 
 prep_data<-function(covars, sva_file, bmi_sv_file, hba_sv_file, pheno ){
-  test.obj2<-lapply(covars,`[`, c("ChipID", "PC1", "PC2", "Age.norm", "BMI.catg"))#DELETE FOLLOWING VARS AS APPROPRIATE (ACCORDING TO TRAIT)
+  test.obj2<-lapply(covars,`[`, c("ChipID", "PC1", "PC2", "Age.norm", "BMI.catg", "BMI.norm"))#DELETE FOLLOWING VARS AS APPROPRIATE (ACCORDING TO TRAIT)
   #2=CHipID,9=PC1,10=PC2,15=Age.norm,16=BMI.norm,20=hba.norm,43=BMI.obese,52=hba.dbx, 24=GLUCOSE_GRS, 25=OBSESITY_GRS, 14=med.days  #output_check<-test.obj2[[1]]
   myvec <- sapply(test.obj2, NROW)#check rownums make sense and of equal length. have dup sample ids been removed?
   tpheno<-t(pheno)#create list of ChipIDs with same sequence as 'pheno'. To be used for post-mice filtering
@@ -50,6 +50,7 @@ prep_data<-function(covars, sva_file, bmi_sv_file, hba_sv_file, pheno ){
   
   return(list(imputed_sets=abc, bmi_enet=bmi.enet, hba_enet=hba.enet)) #returning multiple things requires wrapping as a list
 }
+
 
 
 
@@ -75,6 +76,11 @@ data_list_train = prep_data(
   train_data$svmod_hba1c_catg_sv,
   train_data$pheno_mini
 )
+#Subsets ChipID", "PC1", "PC2", "Age.norm", "BMI.catg for each imputation set from onject train_data$imp_list_Tall.
+#Then Subsets individual that intersect with a curated list of individuals with good data.
+#Then checks for chip duplicates
+#Finally outputs impuatated vars, and object containing merged SV and gene expression info for bmi and hba (individually)
+
 
 gene_expression_train = (train_data$GX_sva)
 colnames(gene_expression_train) = paste0("train_", colnames(gene_expression_train))
@@ -133,8 +139,8 @@ prepare_feature_sets<-function(data_list, gene_expression, outptut_dir, prefix="
 }
 
 
-prepare_feature_sets(data_list_train,gene_expression_train, "/Users/ti1/Google\ Drive/raw\ data/not_normalized_data", "validation_set")
-prepare_feature_sets(data_list_test, gene_expresion_test, "/Users/ti1/Google\ Drive/raw\ data/not_normalized_data", "training_set")
+prepare_feature_sets(data_list_train,gene_expression_train, "/Users/ti1/Google\ Drive/validation_prediction/not_normalized_data_regr", "validation_set")
+prepare_feature_sets(data_list_test, gene_expresion_test, "/Users/ti1/Google\ Drive/validation_prediction/not_normalized_data_regr", "training_set")
 
 
 

@@ -4,7 +4,11 @@
 # In[32]:
 
 
+<<<<<<< HEAD
 import pandas as pd 
+=======
+import pandas as pd
+>>>>>>> 0411e49a85c053be06000e0a1f8f28b1fc671a52
 import codecs
 import numpy as np
 from Bio import SeqIO
@@ -44,10 +48,19 @@ def generate_results(output, sequence_dict, output_file):
     if(merged_output.shape[0] == 0):
        print('No matches at all!')
        return
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 0411e49a85c053be06000e0a1f8f28b1fc671a52
     peta_peptide_matches = pd.pivot_table(merged_output, values='peta-peptide', index=['protein'], columns=['match'], aggfunc=join_string).fillna(0)
     peta_peptide_matches_number = pd.pivot_table(merged_output, values='peta-peptide', index=['protein'], columns=['match'], aggfunc=len).fillna(0)
     total_matches = peta_peptide_matches_number.sum(0)
     total_matches.name = "total"
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0411e49a85c053be06000e0a1f8f28b1fc671a52
     peta_peptide_matches = peta_peptide_matches.append(total_matches)
     peta_peptide_matches = peta_peptide_matches.reset_index()
 
@@ -57,7 +70,11 @@ def generate_results(output, sequence_dict, output_file):
     final_output = final_output.set_index(["number_x_peptides", "protein", "gene"])
     print("output_file:" + output_file + "_result.csv")
     final_output.to_csv(output_file+"_result.csv")
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> 0411e49a85c053be06000e0a1f8f28b1fc671a52
 
 
 # In[34]:

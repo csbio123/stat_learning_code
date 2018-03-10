@@ -111,7 +111,11 @@ retval = p.wait()
 for i, query_path in enumerate(paths):
     print(query_path)
     output = str(query_path+".out")
+<<<<<<< HEAD
     index_cmd = 'java -jar /users/spjtcoi/PeptideMatchCMD_1.0.jar -a query -i %s -Q %s -o %s' % (index_name, query_path ,output)
+=======
+    index_cmd = 'java -jar /Users/ti1/Downloads/PeptideMatchCMD_1.0.jar -a query -i %s -Q %s -o %s' % (index_name, query_path ,output)
+>>>>>>> 0411e49a85c053be06000e0a1f8f28b1fc671a52
     print(index_cmd)
     p = subprocess.Popen(index_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     for line in p.stdout.readlines():
