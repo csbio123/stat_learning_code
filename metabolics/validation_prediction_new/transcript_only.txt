@@ -1,2 +1,4 @@
-medical
+clinical
 technical
+X
+demographic

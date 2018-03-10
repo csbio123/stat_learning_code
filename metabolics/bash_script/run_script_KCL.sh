@@ -1,9 +1,9 @@
 #!/bin/sh
-#$ -N hbtrainchip
+#$ -N purple7_only
 #$ -q LowMemShortterm.q
 #$ -t 1-500
 #$ -pe smp 10
-#$ -l h_rt=00:20:00
+#$ -l h_rt=00:15:00
 #$ -o /dev/null
 #$ -e /dev/null
 
@@ -14,19 +14,36 @@
 
 echo $SGE_TASK_ID
 
-data="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/IMPUTATION_SETS/input_files_HBA_2catg/dataset_${SGE_TASK_ID}.csv"
-feature_list="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/FEATURE_LIST/hba_catg_train_dataset_chip.csv"
-features_to_remove="EMPTY" 
+data="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/IMPUTATION_SETS/input_files_BMI_2catg/dataset_${SGE_TASK_ID}.csv"
+feature_list="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/WGCNA/all_features_bmi_2categ_modules.csv"
+features_to_remove="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/WGCNA/remove_files/purple7_only.csv" 
 #if nothing to remove then just add EMPTY (or any word) without brackets eg.features_to_remove="EMPTY" 
-output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/STUDIES/hba_class/hba_training_chip"
+output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/WGCNA/categorical_BMI/purple7_only"
 
 
-#demographic_only.csv
-#clinical_only.csv
-#chip_only.csv
-#technical_only.csv
-#transcripts_only.csv
-#unattributed_only.csv
+#chip
+#technical
+#clinical
+#demographic
+
+#tan
+#black
+#magenta
+#turquoise
+#blue
+#pink
+#purple
+#midnightblue
+#red
+#yellow
+#lightcyan
+#grey
+#salmon
+#greenyellow
+#green
+#cyan
+#brown
+
 
 # input parameters via commandline (trouble-shooting mode only)
 #output_dir=$1 #comment this out if running as batch
@@ -36,7 +53,7 @@ output_dir="/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/
 mkdir -p $output_dir #-p create multiple subdirectories on the fly (ie they dont already exist)
 
 module load bioinformatics/R/3.4.1
-Rscript /users/spjtcoi/git/stat_learning_code/run_dataset_generic_KCL.R $data $feature_list $features_to_remove $output_dir> $output_dir/test.${SGE_TASK_ID}.out 2> $output_dir/test.${SGE_TASK_ID}.err
+Rscript /users/spjtcoi/git/stat_learning_code/metabolics/predictions/run_dataset_generic_KCL.R $data $feature_list $features_to_remove $output_dir> $output_dir/test.${SGE_TASK_ID}.out 2> $output_dir/test.${SGE_TASK_ID}.err
 
 
 #Commandline demo

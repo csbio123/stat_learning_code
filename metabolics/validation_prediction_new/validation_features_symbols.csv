@@ -1,11 +1,11 @@
 feature,class
 X,technical
-PC1,technical
-PC2,technical
-Age.norm,medical
-BMI.catg,target
-gender,medical
-hba1c.norm,medical
+PC1,demographic
+PC2,demographic
+Age.norm,demographic
+BMI.catg,clinical
+gender,demographic
+hba1c.norm,clinical
 AARS,transcript
 AATF,transcript
 ABCA1,transcript
