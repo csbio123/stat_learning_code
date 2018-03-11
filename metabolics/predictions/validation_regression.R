@@ -9,18 +9,14 @@ args <- commandArgs(trailingOnly = TRUE)#trailing only stops the argument functi
 
 #This is just for testing purposes. If you don't make it as comment, it will overwrite any values that you have given over the command line 
 
-#args[1] = "/Users/ti1/Google\ Drive/raw\ data/training_data/dataset_1.csv"
-#args[2] = "/Users/ti1/Google\ Drive/raw\ data/validation_data_classification/dataset_1.csv"
-#args[3] = "/Users/ti1/Google\ Drive/raw\ data/output/"
+#args[1] = "/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/downloaded/train_sva_9_03_18/training_set_1.csv"
+#args[2] = "/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/downloaded/validation_sva_9_03_18/validation_set_1.csv"
+#args[3] = "/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/downloaded/train_sva_9_03_18/training_set_gene_expression.csv"
+#args[4] = "/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/downloaded/validation_sva_9_03_18/validation_set_gene_expression.csv"
+#args[5] = "/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/downloaded/feature_list_10_03_18.csv"
+#args[6] = "/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/downloaded/remove_class.txt"
+#args[7] = "/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/downloaded/test_output-dir"
 
-#args[1] = "/Users/ti1/Downloads/validation_prediction/train_sva_9_03_18/training_set_1.csv"
-#args[2] = "/Users/ti1/Downloads/validation_prediction/validation_sva_9_03_18/validation_set_1.csv"
-#args[3] = "/Users/ti1/Downloads/validation_prediction/train_sva_9_03_18/training_set_gene_expression.csv"
-#args[4] = "/Users/ti1/Downloads/validation_prediction/validation_sva_9_03_18/validation_set_gene_expression.csv"
-#args[5] = "/Users/ti1/Downloads/feature_list_10_03_18.csv"
-#args[6] = "/Users/ti1/Google\ Drive/validation_prediction/remove_class.txt"
-#args[7] = "/Users/ti1/Google Drive/raw data/validation_prediction/test_output-dir"
-#args[8] = "/Users/ti1/Google Drive/validation_prediction/gene_names.csv"
 
 print(paste0('GLMNET analaysis'))
 print(paste0('Dataset train:', args[1]))
