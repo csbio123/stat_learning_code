@@ -1,8 +1,4 @@
 
-# coding: utf-8
-
-# In[32]:
-
 
 import pandas as pd 
 import codecs
@@ -11,10 +7,6 @@ from Bio import SeqIO
 from os import listdir
 from os.path import isfile, join
 import sys
-
-
-# In[33]:
-
 
 def join_string(strings):
     return ",".join(strings)
@@ -31,7 +23,7 @@ def generate_results(output, sequence_dict, output_file):
     protein = [v.split("|")[1] for v in ids]
     gene = [v.split("|")[2] for v in ids]
 
-    print(gene)
+    #print(gene)
     merged_output["protein"] = protein
     merged_output["gene"] = gene
     merged_output["number_x_peptides"] = aa_pos
@@ -60,26 +52,26 @@ def generate_results(output, sequence_dict, output_file):
     final_output.to_csv(output_file+"_result.csv")
     
 
+def run(mypath):
+    onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
+    # In[35]:
+    for input_fasta in onlyfiles:
+        if input_fasta.endswith(".fasta"):
+            input_fasta = mypath +"/" + input_fasta
+            print("Processing:" + input_fasta)
+            input_r = pd.read_csv(input_fasta+".out", sep='\t', names = ["protein_pos", "match", "length", "from", "to", "ignore"], skiprows=1)
+            sequence_dict = {}
+            for seq_record in SeqIO.parse(input_fasta, "fasta"):
+                seq = str(seq_record.seq)
+                sequence_dict[seq_record.id] = str(seq)
+            generate_results(input_r, sequence_dict, input_fasta)
+
 
 # In[34]:
+if __name__ == "__main__":
 
+    #mypath = sys.argv[1]
+    mypath = "/Users/ti1/Downloads/config/gwas/output_test"
+    run(mypath)
 
-mypath = sys.argv[1]
-onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
-
-
-# In[35]:
-
-
-for input_fasta in onlyfiles:
-    if input_fasta.endswith(".fasta"):
-        input_fasta = mypath +"/" + input_fasta
-        print("Processing:" + input_fasta)
-        input_r = pd.read_csv(input_fasta+".out", sep='\t', names = ["protein_pos", "match", "length", "from", "to", "ignore"], skiprows=1)
-        sequence_dict = {}
-        for seq_record in SeqIO.parse(input_fasta, "fasta"):
-            seq = str(seq_record.seq)
-            sequence_dict[seq_record.id] = str(seq)
-        generate_results(input_r, sequence_dict, input_fasta)
-
-# invoke via:  python3 process.py filename_containing_generated_output
+    # invoke via:  python3 process.py filename_containing_generated_output
