@@ -227,8 +227,8 @@ generate_predictions <- function(data, feature_list, features_to_remove, output_
     data = data[, -which(colnames(data) %in% remove)]
   }
   
-  target_column = feature_list[feature_list[, 2] == "target",][["feature_name"]]
-  label_column = feature_list[feature_list[, 2] == "label",][["feature_name"]]
+  target_column = feature_list[feature_list[, 2] == "target",][1]
+  label_column = feature_list[feature_list[, 2] == "label",][1]
   
   if(is.null(target_column) && is.null(label_column)) {
     print("No label or target specified. Please specify in the feature list file and restart.")
@@ -302,10 +302,10 @@ args <- commandArgs(trailingOnly = TRUE)#trailing only stops the argument functi
 #args[2] = "/Users/ti1/Google\ Drive/raw\ data/all_features2.csv"
 #args[3] = "NONE"
 
-#args[1] = "/Users/ti1/Documents/my_output.csv"
-#args[2] = "/Users/ti1/Google\ Drive/raw\ data/classes_SNP_data.txt"
-#args[3] = "/Users/ti1/Google\ Drive/raw\ data/example_SNP_remove.txt"
-#args[4] = "~/Downloads/my_dir_test2"
+args[1] = "/Users/ti1/Downloads/query/dataset_250.csv"
+args[2] = "/Users/ti1/Downloads/query/features_warddays.csv"
+args[3] = "/Users/ti1/Google\ Drive/raw\ data/example_SNP_remove.txt"
+args[4] = "~/Downloads/my_dir_test2"
 
 print(paste0('GLMNET analaysis'))
 print(paste0('Dataset:', args[1]))
