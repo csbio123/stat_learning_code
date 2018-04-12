@@ -1,5 +1,5 @@
 #!/bin/sh
-#$ -N transcpt
+#$ -N pls_grey
 #$ -q LowMemShortterm.q
 #$ -t 1-500
 #$ -pe smp 10
@@ -16,15 +16,15 @@
 echo $SGE_TASK_ID
 
 input_dir=/users/spjtcoi/brc_scratch/wgcna/Input
-training_input=${input_dir}/SVA/train_sva_9_03_18/training_set_${SGE_TASK_ID}.csv
-test_input=${input_dir}/SVA/validation_sva_9_03_18/validation_set_${SGE_TASK_ID}.csv
-training_GE=${input_dir}/SVA/train_sva_9_03_18/training_set_gene_expression.csv
-test_GE=${input_dir}/SVA/validation_sva_9_03_18/validation_set_gene_expression.csv
-feature_list=${input_dir}/FEATURES/feature_list_bmi_sva.csv
+training_input=${input_dir}/COMBAT/train_combat_9_03_18/training_set_${SGE_TASK_ID}.csv
+test_input=${input_dir}/COMBAT/validation_combat_9_03_18/validation_set_${SGE_TASK_ID}.csv
+training_GE=${input_dir}/COMBAT/train_combat_9_03_18/training_set_gene_expression.csv
+test_GE=${input_dir}/COMBAT/validation_combat_9_03_18/validation_set_gene_expression.csv
+feature_list=${input_dir}/FEATURES/feature_list_bmi_combat.csv
 
-remove_feature_list=${input_dir}/REMOVE/SVA_rm_features/leave_one_in/transcript_only.txt #If no removals then add random (null) filename.Will be ignored
+remove_feature_list=${input_dir}/REMOVE/ComBat_rm_features/3plus_1color/3plus_grey.txt/ #If no removals then add random (null) filename.Will be ignored
 
-output_dir=/users/spjtcoi/brc_scratch/wgcna/Output/SVA/transcript_only
+output_dir=/users/spjtcoi/brc_scratch/wgcna/Output/COMBAT/3plus_grey
 
 genes_named=${input_dir}/gene_names.csv
 

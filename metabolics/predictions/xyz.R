@@ -9,13 +9,13 @@ args <- commandArgs(trailingOnly = TRUE)#trailing only stops the argument functi
 
 #This is just for testing purposes. If you don't make it as comment, it will overwrite any values that you have given over the command line 
 
-args[1] = "/users/spjtcoi/brc_scratch/wgcna/Input/SVA/train_sva_9_03_18/training_set_1.csv"
-args[2] = "/users/spjtcoi/brc_scratch/wgcna/Input/SVA/validation_sva_9_03_18/validation_set_1.csv"
-args[3] = "/users/spjtcoi/brc_scratch/wgcna/Input/SVA/train_sva_9_03_18/training_set_gene_expression.csv"
-args[4] = "/users/spjtcoi/brc_scratch/wgcna/Input/SVA/validation_sva_9_03_18/validation_set_gene_expression.csv"
-args[5] = "/users/spjtcoi/brc_scratch/wgcna/Input/FEATURES/feature_list_10_03_18.csv"
-args[6] = "/users/spjtcoi/brc_scratch/wgcna/Input/Null.txt"
-args[7] = "/users/spjtcoi/brc_scratch/wgcna/Output/test_output-dir_28-03-18"
+args[1] = "/users/spjtcoi/brc_scratch/wgcna/Input/COMBAT/train_combat_9_03_18/training_set_1.csv"
+args[2] = "/users/spjtcoi/brc_scratch/wgcna/Input/COMBAT/validation_combat_9_03_18/validation_set_1.csv"
+args[3] = "/users/spjtcoi/brc_scratch/wgcna/Input/COMBAT/train_combat_9_03_18/training_set_gene_expression.csv"
+args[4] = "/users/spjtcoi/brc_scratch/wgcna/Input/COMBAT/validation_combat_9_03_18/validation_set_gene_expression.csv"
+args[5] = "/users/spjtcoi/brc_scratch/wgcna/Input/FEATURES/feature_list_bmi_combat.csv"
+args[6] = "NULL.txt"
+args[7] = "/users/spjtcoi/brc_scratch/wgcna/Output/test_output"
 
 
 print(paste0('GLMNET analaysis'))
@@ -34,6 +34,7 @@ data_train = read.csv(args[1], stringsAsFactors = FALSE)
 data_test = read.csv(args[2], stringsAsFactors = FALSE)
 gene_expression_train = read.csv(args[3], stringsAsFactors = FALSE)
 gene_expression_test = read.csv(args[4], stringsAsFactors = FALSE)
+
 #This is the fike which contains all features and its corresponding class
 #Column 1: Feature name
 #Column 2: Feature class
@@ -60,9 +61,7 @@ data_test = cbind(data_test, gene_expression_test)
 data_train = data_train[, which(colnames(data_train) %in% feature_list[,1])]
 data_test = data_test[, which(colnames(data_test) %in% feature_list[,1])]
 
-
 same_columns = intersect(colnames(data_train), colnames(data_test))
-print(same_columns)
 print("Total number of columns:")
 print(length(same_columns))
 

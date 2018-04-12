@@ -1,5 +1,5 @@
 #!/bin/sh
-#$ -N transcpt
+#$ -N full_sva
 #$ -q LowMemShortterm.q
 #$ -t 1-500
 #$ -pe smp 10
@@ -21,11 +21,8 @@ test_input=${input_dir}/SVA/validation_sva_9_03_18/validation_set_${SGE_TASK_ID}
 training_GE=${input_dir}/SVA/train_sva_9_03_18/training_set_gene_expression.csv
 test_GE=${input_dir}/SVA/validation_sva_9_03_18/validation_set_gene_expression.csv
 feature_list=${input_dir}/FEATURES/feature_list_bmi_sva.csv
-
-remove_feature_list=${input_dir}/REMOVE/SVA_rm_features/leave_one_in/transcript_only.txt #If no removals then add random (null) filename.Will be ignored
-
-output_dir=/users/spjtcoi/brc_scratch/wgcna/Output/SVA/transcript_only
-
+remove_feature_list=${input_dir}/Null.txt #If nothing to remove then add random (null) filename which will be ignored
+output_dir=/users/spjtcoi/brc_scratch/wgcna/Output/SVA/full_model
 genes_named=${input_dir}/gene_names.csv
 
 echo "input_dir = $input_dir"
