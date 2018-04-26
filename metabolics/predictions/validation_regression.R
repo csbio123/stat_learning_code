@@ -8,17 +8,19 @@ before <- Sys.time()
 args <- commandArgs(trailingOnly = TRUE)#trailing only stops the argument function from requiring specification of too much information eg R version, etc
 #This is just for testing purposes. If you don't make it as comment, it will overwrite any values that you have given over the command line 
 folder = "/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/downloaded/"
-folder="/Users/ti1/Downloads/config/validation_prediction"
-args[1] = paste0(folder, "/train_sva_9_03_18/training_set_13.csv")
-args[2] = paste0(folder, "/validation_sva_9_03_18/validation_set_13.csv")
+folder="/Users/tomi/Downloads/config/validation_prediction"
+number = 10
+args[1] = paste0(folder, "/train_sva_9_03_18/training_set_", number , ".csv")
+args[2] = paste0(folder, "/validation_sva_9_03_18/validation_set_", number, ".csv")
 args[3] = paste0(folder, "/train_sva_9_03_18/training_set_gene_expression.csv")
 args[4] = paste0(folder, "/validation_sva_9_03_18/validation_set_gene_expression.csv")
 args[5] = paste0(folder, "/feature_list_10_03_18.csv")
 args[6] = paste0(folder, "/remove_class.txt")
 args[7] = paste0(folder, "/test_output-dir")
-args[8] = 10
+args[8] = 0
 
 iterations = args[8]
+iterations = 10
 
 print(paste0('GLMNET analaysis'))
 print(paste0('Dataset train:', args[1]))
@@ -30,7 +32,7 @@ print(paste0('To remove features: ', args[6] ))
 print(paste0('Output-dir: ', args[7] ))
 print(paste0('Permutations: ', iterations ))
 
-number = Sys.getenv(c("SGE_TASK_ID"))
+#number = Sys.getenv(c("SGE_TASK_ID"))
 
 
 data_train = read.csv(args[1], stringsAsFactors = FALSE)
@@ -147,8 +149,10 @@ sample_results = sapply(1:iterations, function(x) {
   
   #X_train_r = data_train[, which(colnames(data_train) %in% random_features)]
   #X_test_r = data_test[, which(colnames(data_test) %in% random_features)]
-  d_r = cbind(Y_train, X_train_r)
-  test_rf = randomForest(Y_train~., data=d_r, ntree=100, proximity=T)
+  Y_rand = data.frame(sample(Y_train))
+  colnames(Y_rand) = "Y_rand"
+  d_r = cbind(Y_rand, X_train_r)
+  test_rf = randomForest(Y_rand~., data=d_r, ntree=100, proximity=T)
   preds_rf = predict(test_rf, newdata=X_test_r)
   return(mean(100*(abs((preds_rf - Y_test))/Y_test)))
 })
