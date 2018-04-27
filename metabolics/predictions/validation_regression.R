@@ -7,18 +7,18 @@ before <- Sys.time()
 
 args <- commandArgs(trailingOnly = TRUE)#trailing only stops the argument function from requiring specification of too much information eg R version, etc
 #This is just for testing purposes. If you don't make it as comment, it will overwrite any values that you have given over the command line 
-folder = "/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/downloaded/"
-folder="/Users/ti1/Downloads/config/validation_prediction"
-args[1] = paste0(folder, "/train_sva_9_03_18/training_set_13.csv")
-args[2] = paste0(folder, "/validation_sva_9_03_18/validation_set_13.csv")
-args[3] = paste0(folder, "/train_sva_9_03_18/training_set_gene_expression.csv")
-args[4] = paste0(folder, "/validation_sva_9_03_18/validation_set_gene_expression.csv")
-args[5] = paste0(folder, "/feature_list_10_03_18.csv")
-args[6] = paste0(folder, "/remove_class.txt")
-args[7] = paste0(folder, "/test_output-dir")
-args[8] = 10
+#folder = "/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/downloaded/"
+#folder="/Users/ti1/Downloads/config/validation_prediction"
+#args[1] = paste0(folder, "/train_sva_9_03_18/training_set_13.csv")
+#args[2] = paste0(folder, "/validation_sva_9_03_18/validation_set_13.csv")
+#args[3] = paste0(folder, "/train_sva_9_03_18/training_set_gene_expression.csv")
+#args[4] = paste0(folder, "/validation_sva_9_03_18/validation_set_gene_expression.csv")
+#args[5] = paste0(folder, "/feature_list_10_03_18.csv")
+#args[6] = paste0(folder, "/remove_class.txt")
+#args[7] = paste0(folder, "/test_output-dir")
+#args[8] = 10#label swapping permutation to establish null prediction rate
 
-iterations = args[8]
+iterations = 10 #as.numeric(args[8])
 
 print(paste0('GLMNET analaysis'))
 print(paste0('Dataset train:', args[1]))
