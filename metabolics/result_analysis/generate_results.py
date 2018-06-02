@@ -130,3 +130,5 @@ if __name__ == "__main__":
         boxplot(data_show, output_dir, 'prediction_rf_lsqe', ylabel="Squared logarithmic error", name="boxplot_SLE.pdf")
         line_plot(data_show, output_dir, 'prediction_rf_lsqe', ylabel="Squared logarithmic error", name="lineplot_SLE.pdf")
 
+#Call as follows:python3 generate_results.py PATH/TO/FOLDERS DESTINATION/FOR/OUTPUT/FILES 
+#python3 /users/spjtcoi/git/stat_learning_code/metabolics/result_analysis/generate_results.py /users/spjtcoi/brc_scratch/cris/OUTPUT/WGCNA/referral_days/DELETE /users/spjtcoi/brc_scratch/cris/test_output/sed
