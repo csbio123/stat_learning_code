@@ -23,7 +23,6 @@ test_GE=${input_dir}/COMBAT/validation_combat_9_03_18/validation_set_gene_expres
 feature_list=${input_dir}/FEATURES/feature_list_bmi_combat.csv
 remove_feature_list=${input_dir}/Null.txt #If nothing to remove then add random (null) filename which will be ignored
 output_dir=/users/spjtcoi/brc_scratch/wgcna/Output/COMBAT/full_model_permutation_rerun
-genes_named=${input_dir}/gene_names.csv
 
 echo "input_dir = $input_dir"
 echo "training_input  = $training_input"
@@ -40,7 +39,7 @@ module load bioinformatics/R/3.4.1
 #export SGE_TASK_ID=50
 
 mkdir -p $output_dir
-Rscript /users/spjtcoi/git/stat_learning_code/metabolics/predictions/validation_regression.R $training_input $test_input $training_GE $test_GE $feature_list $remove_feature_list  $output_dir> $output_dir/test.${SGE_TASK_ID}.out 2> $output_dir/test.${SGE_TASK_ID}.err $genes_named
+Rscript /users/spjtcoi/git/stat_learning_code/metabolics/predictions/validation_regression.R $training_input $test_input $training_GE $test_GE $feature_list $remove_feature_list  $output_dir> $output_dir/test.${SGE_TASK_ID}.out 2> $output_dir/test.${SGE_TASK_ID}.err
 
 #Commandline demo
 #SGE_TASK_ID=50 ./run_script_amended.sh "/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/genes_test" "/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/remove.csv"

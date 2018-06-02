@@ -26,24 +26,25 @@ remove_feature_list=${input_dir}/REMOVE/ComBat_rm_features/3plus_1color/3plus_gr
 
 output_dir=/users/spjtcoi/brc_scratch/wgcna/Output/COMBAT/3plus_greenyellow_permutation_run
 
-genes_named=${input_dir}/gene_names.csv
+#genes_named=${input_dir}/gene_names.csv
 
 echo "input_dir = $input_dir"
-echo "training_input  = $training_input"
-echo "test_input = $test_input"
-echo "training_GE = $training_GE"
-echo "test_GE = $test_GE"
-echo "feature_list = $feature_list"
-echo "remove_feature_list = $remove_feature_list"
-echo "output_dir = $output_dir"
-echo "gene_names = $genes_named"
+echo "training_input  = $training_input"#1
+echo "test_input = $test_input"#2
+echo "training_GE = $training_GE"#3
+echo "test_GE = $test_GE"#4
+echo "feature_list = $feature_list"#5
+echo "remove_feature_list = $remove_feature_list"#6
+echo "output_dir = $output_dir"#7
+#echo "gene_names = $genes_named"
+
 
 
 module load bioinformatics/R/3.4.1
 #export SGE_TASK_ID=50
 
 mkdir -p $output_dir
-Rscript /users/spjtcoi/git/stat_learning_code/metabolics/predictions/validation_regression.R $training_input $test_input $training_GE $test_GE $feature_list $remove_feature_list  $output_dir> $output_dir/test.${SGE_TASK_ID}.out 2> $output_dir/test.${SGE_TASK_ID}.err $genes_named
+Rscript /users/spjtcoi/git/stat_learning_code/metabolics/predictions/validation_regression.R $training_input $test_input $training_GE $test_GE $feature_list $remove_feature_list  $output_dir> $output_dir/test.${SGE_TASK_ID}.out 2> $output_dir/test.${SGE_TASK_ID}.err
 
 #Commandline demo
 #SGE_TASK_ID=50 ./run_script_amended.sh "/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/genes_test" "/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/remove.csv"

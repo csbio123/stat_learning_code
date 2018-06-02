@@ -93,6 +93,7 @@ if __name__ == "__main__":
         data, data_mean = analyse_results(input_dir, output_dir)
         data_show = select_extremes(data, data_mean, 3)
 
+        print(data_show)
         violin_plot(data_show, output_dir)
         boxplot(data_show, output_dir)
 
