@@ -7,15 +7,15 @@ before <- Sys.time()
 
 args <- commandArgs(trailingOnly = TRUE)#trailing only stops the argument function from requiring specification of too much information eg R version, etc
 #This is just for testing purposes. If you don't make it as comment, it will overwrite any values that you have given over the command line 
-folder = "/users/spjtcoi/brc_scratch/wgcna/Input/COMBAT"
-#folder="/Users/ti1/Downloads/config/validation_prediction"
-args[1] = paste0(folder, "/train_combat_9_03_18/training_set_13.csv")
-args[2] = paste0(folder, "/validation_combat_9_03_18/validation_set_13.csv")
-args[3] = paste0(folder, "/train_combat_9_03_18/training_set_gene_expression.csv")
-args[4] = paste0(folder, "/validation_combat_9_03_18/validation_set_gene_expression.csv")
-args[5] = "/users/spjtcoi/brc_scratch/wgcna/Input/FEATURES/feature_list_bmi_combat.csv"
-args[6] = paste0(folder, "/NULL.txt")
-args[7] = paste0(folder, "/test_output-dir_28-04-18")
+#folder = "/users/spjtcoi/brc_scratch/project_tomi/conrad/reanalyse/drug_naive/new_protocol_25thOct/downloaded/"
+folder="/Users/ti1/Downloads/config/validation_prediction"
+args[1] = paste0(folder, "/train_sva_9_03_18/training_set_13.csv")
+args[2] = paste0(folder, "/validation_sva_9_03_18/validation_set_13.csv")
+args[3] = paste0(folder, "/train_sva_9_03_18/training_set_gene_expression.csv")
+args[4] = paste0(folder, "/validation_sva_9_03_18/validation_set_gene_expression.csv")
+args[5] = paste0(folder, "/feature_list_10_03_18.csv")
+args[6] = paste0(folder, "/remove_class.txt")
+args[7] = paste0(folder, "/test_output-dir")
 args[8] = 10#label swapping permutation to establish null prediction rate
 
 iterations = 10 #as.numeric(args[8])
@@ -29,19 +29,13 @@ print(paste0('To remove features: ', args[6] ))
 print(paste0('Output-dir: ', args[7] ))
 print(paste0('Permutations: ', iterations ))
 
-number = Sys.getenv(c("SGE_TASK_ID"))
+#number = Sys.getenv(c("SGE_TASK_ID"))
 
 
 data_train = read.csv(args[1], stringsAsFactors = FALSE)
 data_test = read.csv(args[2], stringsAsFactors = FALSE)
-gene_expression_train = read.csv(args[3], stringsAsFactors = FALSE, check.names=FALSE)
-gene_expression_test = read.csv(args[4], stringsAsFactors = FALSE, check.names=FALSE)
-g_test_col = (colnames(gene_expression_test))
-g_train_col = (colnames(gene_expression_train))
-
-colnames(gene_expression_test) = unlist(lapply(g_test_col, function(x) { gsub('\`','', x)}))
-colnames(gene_expression_train) = unlist(lapply(g_train_col, function(x) { gsub('\`','', x)}))
-
+gene_expression_train = read.csv(args[3], stringsAsFactors = FALSE, check.names = FALSE)
+gene_expression_test = read.csv(args[4], stringsAsFactors = FALSE, check.names = FALSE)
 
 #This is the fike which contains all features and its corresponding class
 #Column 1: Feature name
@@ -49,11 +43,10 @@ colnames(gene_expression_train) = unlist(lapply(g_train_col, function(x) { gsub(
 if(!file.exists(args[5])) {
   stop("Feature reference file not found. Please check.")
 } else {
-  feature_list = read.csv(args[5], stringsAsFactors = FALSE)
+  feature_list = read.csv(args[5], stringsAsFactors = FALSE,  check.names = FALSE)
 }
-feature_list[,1] = (unlist(lapply(feature_list[,1], function(x) { gsub('\`','', x)})))
 
-	#This file lists all classes and/or features that should be removed. It is a 1-dim list.
+#This file lists all classes and/or features that should be removed. It is a 1-dim list.
 #If this file doesn't exist, nothing will be removed
 if(file.exists(args[6])) {
   print(paste0('Features to remove: ', args[6] ))
@@ -61,10 +54,6 @@ if(file.exists(args[6])) {
 } else {
   features_to_remove = c()
 }
-
-print(paste0('All number of features in feature list: ', nrow(feature_list)))
-print(paste0('All number of fetures in gene expression train: ', ncol(gene_expression_train)))
-print(paste0('All number of features in gene expression test: ', ncol(gene_expression_test)))
 
 target_columns = feature_list[feature_list[, 2] == "target",][["feature"]]
 
@@ -74,12 +63,8 @@ data_test = cbind(data_test, gene_expression_test)
 data_train = data_train[, which(colnames(data_train) %in% feature_list[,1])]
 data_test = data_test[, which(colnames(data_test) %in% feature_list[,1])]
 
-
-
-print(paste0('Number of features in train set also in feature list: ', ncol(data_train)))
-print(paste0('Number of features in test set also in feature list: ', ncol(data_test)))
 same_columns = intersect(colnames(data_train), colnames(data_test))
-print("Total number of features that are same between test and train:")
+print("Total number of columns:")
 print(length(same_columns))
 
 #write.csv(same_columns, "~/Downloads/test.csv")
@@ -120,7 +105,6 @@ if(length(features_to_remove) >0) {
 
 
 
-print(paste0('All number of features after feature removal', ncol(X_train)))
 previous_na_action <- options('na.action')
 options(na.action='na.pass')
 
@@ -137,23 +121,23 @@ X_test = design_matrix_test[!null_rows, -1]
 Y_test  = Y_test[!null_rows]
 
 
-colnames(X_test) = unlist(lapply(colnames(X_test), function(x) { gsub('\`','feature_', x)}))
-colnames(X_train) = unlist(lapply(colnames(X_train), function(x) { gsub('\`','feature_', x)}))
-
 same_columns = intersect(colnames(X_train), colnames(X_test))
-print(same_columns)
+
 X_train = X_train[, which(colnames(X_train) %in% same_columns)]
 X_test = X_test[, which(colnames(X_test) %in% same_columns)]
+
+#X_train[["gender"]] = as.factor( X_train[["gender"]] )
+#X_test[["gender"]] = as.factor( X_test[["gender"]] )
+
+
 
 # Train the model
 print("Training Random Forest and GLMNet prediction models")#
 d = cbind(Y_train, X_train)
-print('Run RF')
-test_rf = randomForest(Y_train~., data=d, ntree=100, proximity=T)
 
-print('fit')
+test_rf = randomForest(Y_train~., data=d, ntree=100, proximity=T)
 preds_rf = predict(test_rf, newdata=X_test)
-print('predict')
+
 sample_results = sapply(1:iterations, function(x) {
   
   #random_features = sample( colnames(data_train), ncol(X_train))
