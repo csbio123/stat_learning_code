@@ -77,13 +77,16 @@ def line_plot(data_show, output_dir, col, name, ylabel='Absolute Percentage Erro
     figure= plt.figure(figsize=[10, 7])
     sns.set_style("whitegrid")
     dat_show_mean = data_show.groupby(["type_1"]).median().reset_index()
+    x = range(dat_show_mean.shape[0])
+
     plt.plot(dat_show_mean["type_1"], dat_show_mean[col])
+    plt.xticks(x, dat_show_mean["type_1"].values, rotation='vertical')
 
     plt.xlabel('Feature classes')
     plt.ylabel(ylabel)
     plt.tight_layout()
     plt.title("Accuracy of predicting BMI")
-    plt.xticks(rotation=90)
+    #plt.xticks(rotation=90)
     plt.savefig("{}/{}.pdf".format(output_dir, name))
     
 def boxplot(data_show, output_dir, col, name, ylabel='Absolute Percentage Error [%]'):
