@@ -18,7 +18,7 @@ args <- commandArgs(trailingOnly = TRUE)#trailing only stops the argument functi
 #args[7] = paste0(folder, "/test_output-dir")
 #args[8] = 10#label swapping permutation to establish null prediction rate
 
-#iterations = 10 #as.numeric(args[8])
+iterations = 1 #as.numeric(args[8])
 print(paste0('GLMNET analaysis'))
 print(paste0('Dataset train:', args[1]))
 print(paste0('Dataset test: ', args[2] ))
@@ -29,7 +29,7 @@ print(paste0('To remove features: ', args[6] ))
 print(paste0('Output-dir: ', args[7] ))
 #print(paste0('Permutations: ', iterations ))
 
-#number = Sys.getenv(c("SGE_TASK_ID"))
+number = Sys.getenv(c("SGE_TASK_ID"))
 
 
 data_train = read.csv(args[1], stringsAsFactors = FALSE)
