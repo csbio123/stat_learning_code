@@ -18,6 +18,14 @@ args <- commandArgs(trailingOnly = TRUE)#trailing only stops the argument functi
 #args[7] = paste0(folder, "/test_output-dir")
 #args[8] = 10#label swapping permutation to establish null prediction rate
 
+#args[1] = "/users/spjtcoi/brc_scratch/wgcna/Input/SVA/train_sva_9_03_18/training_set_59.csv" 
+#args[2] = "/users/spjtcoi/brc_scratch/wgcna/Input/SVA/validation_sva_9_03_18/validation_set_59.csv"
+#args[3] = "/users/spjtcoi/brc_scratch/wgcna/Input/SVA/train_sva_9_03_18/training_set_gene_expression.csv"
+#args[4] = "/users/spjtcoi/brc_scratch/wgcna/Input/SVA/validation_sva_9_03_18/validation_set_gene_expression.csv"
+#args[5] = "/users/spjtcoi/brc_scratch/wgcna/Input/FEATURES/feature_list_bmi_sva.csv"
+#args[6] = "/users/spjtcoi/brc_scratch/wgcna/Input/REMOVE/SVA_rm_features/3plus_1color/3plus_brown.txt"
+#args[7] = "/users/spjtcoi/brc_scratch/wgcna/Output/SVA/July_Analysis/3plus_brown/"
+
 iterations = 1 #as.numeric(args[8])
 print(paste0('GLMNET analaysis'))
 print(paste0('Dataset train:', args[1]))
